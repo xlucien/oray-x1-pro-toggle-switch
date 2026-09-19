@@ -67,17 +67,11 @@
 .combined-feature .func-title {
     display: none;
 }
-.combined-feature > .toggle-item,
+.hidden-control-source,
 .grid-proxy-pane .proxy-row {
     display: none !important;
 }
-.combined-card.no-action::after {
-    content: "请选择 LED 或 WiFi 设置左右拨动作";
-    display: block;
-    padding: 34px 10px;
-    color: #888;
-    font-size: 13px;
-}
+.shared-action-editor.is-disabled { opacity: .45; }
 .feature-picker {
     border-top: 0;
     border-bottom: 1px solid #eee;

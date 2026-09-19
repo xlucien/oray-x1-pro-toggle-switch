@@ -226,7 +226,7 @@
     function buildProxyPane(data) {
         var pane = create('div', { 'class': 'control-section', 'id': 'proxy-pane' });
         var card = create('div', { 'class': 'proxy-card' });
-        card.appendChild(create('div', { 'class': 'func-title', 'text': '🌐 代理控制' }));
+        card.appendChild(create('div', { 'class': 'func-title', 'text': '🌐 代理设置' }));
 
         var enableRow = create('div', { 'class': 'toggle-item proxy-row' });
         enableRow.appendChild(create('span', { 'class': 'toggle-label', 'text': '启用代理拨杆控制' }));
@@ -253,7 +253,7 @@
         selectRow.appendChild(wrapSelect(proxyTarget));
         card.appendChild(selectRow);
 
-        var actions = create('div', { 'class': 'proxy-actions proxy-action-settings' });
+        var actions = create('div', { 'class': 'proxy-actions proxy-action-settings hidden-control-source' });
         var leftAction = create('div', { 'class': 'proxy-action' });
         leftAction.appendChild(create('div', { 'class': 'section-label', 'text': '左拨' }));
         var leftRadios = createRadioRow('proxy_left_action', data.proxy_left_action === true, ['恢复代理', '关闭代理']);
@@ -266,12 +266,6 @@
         actions.appendChild(rightAction);
         card.appendChild(actions);
 
-        var actionHint = create('div', { 'class': 'proxy-action-hint' });
-        function updateProxyActionHint() {
-            actionHint.textContent = '左拨：' + (leftRadios.input_on.checked ? '恢复代理' : '关闭代理') +
-                '；右拨：' + (rightRadios.input_on.checked ? '恢复代理' : '关闭代理') + '。';
-        }
-        card.appendChild(actionHint);
         controls.proxy = {
             enabled: proxyEnable,
             left_on: leftRadios.input_on,
@@ -280,10 +274,6 @@
             right_off: rightRadios.input_off
         };
         setupOppositeMutex('proxy');
-        [leftRadios.input_on, leftRadios.input_off, rightRadios.input_on, rightRadios.input_off].forEach(function(input) {
-            input.addEventListener('change', updateProxyActionHint);
-        });
-        updateProxyActionHint();
 
         proxyStatusText = create('div', { 'class': 'proxy-status' });
         card.appendChild(proxyStatusText);
@@ -442,7 +432,7 @@
         var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box function-proxy-grid' });
         var combined = create('div', { 'class': 'func-block combined-card' });
-        combined.appendChild(create('div', { 'class': 'func-title', 'text': '🔦 LED / 📶 WiFi 控制' }));
+        combined.appendChild(create('div', { 'class': 'func-title', 'text': 'LED / WiFi / 代理控制' }));
         var featureRow = create('div', { 'class': 'proxy-field feature-picker' });
         featureRow.appendChild(create('label', { 'text': '控制功能' }));
         var featureSelect = create('select', { 'class': 'proxy-select' });
@@ -456,24 +446,88 @@
         combined.appendChild(featureRow);
         var ledBlock = buildFunctionBlock('🔦 ' + _('LED'), 'led', data, [_('ON'), _('OFF')]);
         var wifiBlock = buildFunctionBlock('📶 ' + _('WiFi'), 'wifi', data, [_('ON'), _('OFF')]);
-        ledBlock.className += ' combined-feature';
-        wifiBlock.className += ' combined-feature';
+        ledBlock.className += ' combined-feature hidden-control-source';
+        wifiBlock.className += ' combined-feature hidden-control-source';
         combined.appendChild(ledBlock);
         combined.appendChild(wifiBlock);
         var proxyPane = buildProxyPane(data);
         proxyPane.className += ' grid-proxy-pane';
+        var sharedActions = create('div', { 'class': 'shared-action-editor' });
+        var leftRow = create('div', { 'class': 'proxy-field' });
+        leftRow.appendChild(create('label', { 'text': '左拨动作' }));
+        var leftSelect = create('select', { 'class': 'proxy-select' });
+        leftRow.appendChild(wrapSelect(leftSelect));
+        var rightRow = create('div', { 'class': 'proxy-field' });
+        rightRow.appendChild(create('label', { 'text': '右拨动作' }));
+        var rightSelect = create('select', { 'class': 'proxy-select' });
+        rightRow.appendChild(wrapSelect(rightSelect));
+        sharedActions.appendChild(leftRow);
+        sharedActions.appendChild(rightRow);
+        var actionSummary = create('div', { 'class': 'proxy-action-hint' });
+        sharedActions.appendChild(actionSummary);
+        combined.appendChild(sharedActions);
+
+        function actionLabelsFor(feature) {
+            if (feature === 'proxy') return [['1', '恢复代理'], ['0', '关闭代理']];
+            if (feature === 'wifi') return [['1', '恢复 WiFi'], ['0', '关闭 WiFi']];
+            return [['1', '打开灯光'], ['0', '关闭灯光']];
+        }
+        function fillActionSelect(select, labels, value) {
+            select.innerHTML = '';
+            labels.forEach(function(item) {
+                var opt = create('option', { 'value': item[0], 'text': item[1] });
+                if (item[0] === value) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+        function setStoredActions(feature, leftOn) {
+            var group = controls[feature];
+            group.left_on.checked = leftOn;
+            group.left_off.checked = !leftOn;
+            group.right_on.checked = !leftOn;
+            group.right_off.checked = leftOn;
+        }
+        function updateActionSummary() {
+            if (featureSelect.value === 'none') {
+                actionSummary.textContent = '未启用拨杆控制';
+                return;
+            }
+            actionSummary.textContent = '左拨：' + leftSelect.options[leftSelect.selectedIndex].text +
+                '；右拨：' + rightSelect.options[rightSelect.selectedIndex].text + '。';
+        }
         function showSelectedFeature() {
             var feature = featureSelect.value;
             controls.led.enabled.checked = feature === 'led';
             controls.wifi.enabled.checked = feature === 'wifi';
             proxyEnable.checked = feature === 'proxy';
-            ledBlock.style.display = featureSelect.value === 'led' ? 'block' : 'none';
-            wifiBlock.style.display = featureSelect.value === 'wifi' ? 'block' : 'none';
-            combined.classList.toggle('no-action', feature === 'none' || feature === 'proxy');
+            var disabled = feature === 'none';
+            leftSelect.disabled = disabled;
+            rightSelect.disabled = disabled;
+            sharedActions.classList.toggle('is-disabled', disabled);
+            if (!disabled) {
+                var labels = actionLabelsFor(feature);
+                fillActionSelect(leftSelect, labels, controls[feature].left_on.checked ? '1' : '0');
+                fillActionSelect(rightSelect, labels, controls[feature].right_on.checked ? '1' : '0');
+            }
+            updateActionSummary();
             proxyPane.classList.toggle('is-disabled', feature !== 'proxy');
             proxyTarget.disabled = feature !== 'proxy';
             proxyDetectBtn.disabled = feature !== 'proxy';
         }
+        leftSelect.addEventListener('change', function() {
+            if (featureSelect.value === 'none') return;
+            var leftOn = leftSelect.value === '1';
+            setStoredActions(featureSelect.value, leftOn);
+            rightSelect.value = leftOn ? '0' : '1';
+            updateActionSummary();
+        });
+        rightSelect.addEventListener('change', function() {
+            if (featureSelect.value === 'none') return;
+            var rightOn = rightSelect.value === '1';
+            setStoredActions(featureSelect.value, !rightOn);
+            leftSelect.value = rightOn ? '0' : '1';
+            updateActionSummary();
+        });
         featureSelect.addEventListener('change', showSelectedFeature);
         showSelectedFeature();
         gridBox.appendChild(combined);
