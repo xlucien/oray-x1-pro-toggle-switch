@@ -1,6 +1,6 @@
 (function(){'use strict';
 var api='/cgi-bin/luci/admin/system/toggle/api', app=document.getElementById('toggle-app');
-var groups=[['led','LED','ON','OFF'],['passwall','PassWall','Enable','Disable'],['openclash','OpenClash','Enable','Disable'],['ssr','SSR Plus','Enable','Disable']];
+var groups=[['led','LED','ON','OFF'],['wifi','WiFi','ON','OFF'],['passwall','PassWall','Enable','Disable'],['openclash','OpenClash','Enable','Disable'],['ssr','SSR Plus','Enable','Disable']];
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function request(method,data,cb){var x=new XMLHttpRequest(),body='';if(data){if(typeof csrf_token!=='undefined')data.token=csrf_token;body=Object.keys(data).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(data[k])}).join('&')}x.open(method,api+'?_='+Date.now(),true);if(method==='POST')x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');x.onload=function(){try{cb(JSON.parse(x.responseText))}catch(e){cb({success:false,error:'Invalid response'})}};x.onerror=function(){cb({success:false,error:'Network error'})};x.send(body)}
 function radio(prefix,side,on,a,b){var n=prefix+'_'+side+'_action';return '<div class="ts-row ts-actions"><span>'+esc(side==='left'?'Left':'Right')+'</span><span><label><input type="radio" name="'+n+'" value="1" '+(on?'checked':'')+'> '+esc(a)+'</label><label><input type="radio" name="'+n+'" value="0" '+(!on?'checked':'')+'> '+esc(b)+'</label></span></div>'}
@@ -10,4 +10,3 @@ function save(){var d={action:'save',global_enabled:document.getElementById('glo
 function refresh(){request('GET',null,function(r){if(r.success&&r.data){var e=document.getElementById('ts-mode');if(e)e.textContent='Current switch position: '+(String(r.data.current_mode)==='1'?'Right':'Left');else render(r.data)}else app.innerHTML='<p class="ts-error">'+esc(r.error||'Load failed')+'</p>'})}
 refresh();setInterval(refresh,2000);
 })();
-

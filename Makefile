@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
-PKG_VERSION:=1.0.0
+PKG_VERSION:=1.1.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
@@ -40,6 +40,7 @@ define Package/toggle-switch/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) ./usr/sbin/x1pro-toggle-apply $(1)/usr/sbin/x1pro-toggle-apply
 	$(INSTALL_BIN) ./usr/sbin/x1pro-toggle-sync $(1)/usr/sbin/x1pro-toggle-sync
+	$(INSTALL_BIN) ./usr/sbin/x1pro-toggle-wifi $(1)/usr/sbin/x1pro-toggle-wifi
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller $(1)/usr/lib/lua/luci/view/toggle
 	$(INSTALL_DATA) ./usr/lib/lua/luci/controller/toggle.lua $(1)/usr/lib/lua/luci/controller/toggle.lua
 	$(INSTALL_DATA) ./usr/lib/lua/luci/view/toggle/index.htm $(1)/usr/lib/lua/luci/view/toggle/index.htm
@@ -58,4 +59,3 @@ exit 0
 endef
 
 $(eval $(call BuildPackage,toggle-switch))
-

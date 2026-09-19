@@ -55,6 +55,9 @@ function api()
             led_enabled = cfg_get("led_enabled", "0") == "1",
             led_left_action = cfg_get("led_high_action", "1") == "1",
             led_right_action = cfg_get("led_low_action", "0") == "1",
+            wifi_enabled = cfg_get("wifi_enabled", "0") == "1",
+            wifi_left_action = cfg_get("wifi_high_action", "0") == "1",
+            wifi_right_action = cfg_get("wifi_low_action", "1") == "1",
             passwall_enabled = cfg_get("passwall_enabled", "0") == "1",
             passwall_left_action = cfg_get("passwall_high_action", "1") == "1",
             passwall_right_action = cfg_get("passwall_low_action", "0") == "1",
@@ -71,11 +74,19 @@ function api()
     end
 
     if method == "POST" and http.formvalue("action") == "save" then
+        local old_wifi_enabled = cfg_get("wifi_enabled", "0")
+        local new_wifi_enabled = http.formvalue("wifi_enabled") == "1" and "1" or "0"
+        if old_wifi_enabled == "0" and new_wifi_enabled == "1" then
+            os.execute("/usr/sbin/x1pro-toggle-wifi snapshot >/dev/null 2>&1")
+        end
         local map = {
             global_enabled = "global_enabled",
             led_enabled = "led_enabled",
             led_left_action = "led_high_action",
             led_right_action = "led_low_action",
+            wifi_enabled = "wifi_enabled",
+            wifi_left_action = "wifi_high_action",
+            wifi_right_action = "wifi_low_action",
             passwall_enabled = "passwall_enabled",
             passwall_left_action = "passwall_high_action",
             passwall_right_action = "passwall_low_action",
@@ -90,6 +101,9 @@ function api()
             cfg_set_bool(uci_key, http.formvalue(form_key) or "0")
         end
         os.execute("uci -q commit x1pro-toggle")
+        if old_wifi_enabled == "1" and new_wifi_enabled == "0" then
+            os.execute("/usr/sbin/x1pro-toggle-wifi restore >/dev/null 2>&1")
+        end
         apply_current_state()
         json_out({ success = true })
         return

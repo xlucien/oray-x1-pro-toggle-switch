@@ -10,9 +10,10 @@ mkdir -p /usr/sbin /etc/init.d /etc/config /etc/rc.button /etc/x1pro-toggle.d \
 	/www/luci-static/resources/view/toggle
 cp "$BASE/usr/sbin/x1pro-toggle-apply" /usr/sbin/x1pro-toggle-apply
 cp "$BASE/usr/sbin/x1pro-toggle-sync" /usr/sbin/x1pro-toggle-sync
+cp "$BASE/usr/sbin/x1pro-toggle-wifi" /usr/sbin/x1pro-toggle-wifi
 cp "$BASE/etc/init.d/x1pro-toggle" /etc/init.d/x1pro-toggle
 cp "$BASE/etc/rc.button/BTN_0" /etc/rc.button/BTN_0
-chmod 0755 /usr/sbin/x1pro-toggle-apply /usr/sbin/x1pro-toggle-sync \
+chmod 0755 /usr/sbin/x1pro-toggle-apply /usr/sbin/x1pro-toggle-sync /usr/sbin/x1pro-toggle-wifi \
 	/etc/init.d/x1pro-toggle /etc/rc.button/BTN_0
 cp "$BASE/usr/lib/lua/luci/controller/toggle.lua" /usr/lib/lua/luci/controller/toggle.lua
 cp "$BASE/usr/lib/lua/luci/view/toggle/index.htm" /usr/lib/lua/luci/view/toggle/index.htm

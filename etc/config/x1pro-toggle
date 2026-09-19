@@ -9,6 +9,12 @@ config x1pro_toggle 'main'
 	option led_high_action '1'
 	option led_low_action '0'
 
+	# Enabling this module snapshots each wifi-device disabled state once.
+	# Left/HIGH turns all radios off; Right/LOW restores that snapshot.
+	option wifi_enabled '0'
+	option wifi_high_action '0'
+	option wifi_low_action '1'
+
 	option passwall_enabled '0'
 	option passwall_high_action '1'
 	option passwall_low_action '0'

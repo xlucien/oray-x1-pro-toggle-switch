@@ -55,7 +55,20 @@ set_service_feature() {
 	fi
 }
 
+set_wifi() {
+	local enabled action
+	config_get_bool enabled main wifi_enabled '0'
+	[ "$enabled" -eq 1 ] || return 0
+	config_get action main "wifi_${LEVEL}_action" '0'
+	if [ "$action" = '1' ]; then
+		/usr/sbin/x1pro-toggle-wifi restore
+	else
+		/usr/sbin/x1pro-toggle-wifi off
+	fi
+}
+
 set_led
+set_wifi
 set_service_feature passwall passwall 'passwall.@global[0].enabled'
 set_service_feature openclash openclash 'openclash.@global[0].enabled'
 set_service_feature ssr shadowsocksr 'shadowsocksr.@global[0].enabled'

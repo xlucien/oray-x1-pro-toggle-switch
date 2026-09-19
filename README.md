@@ -2,6 +2,19 @@
 
 适用于 ImmortalWrt/OpenWrt 的中断驱动拨动开关组件，包含 LuCI 面板、UCI 配置和安装脚本。
 
+## Wi‑Fi 状态切换
+
+LuCI 中提供独立的 WiFi 功能模块，默认映射为左拨关闭、右拨开启。这里的“开启”不是强制打开全部 radio，而是恢复启用模块时保存的状态：
+
+- WiFi 模块从关闭切换为开启时，仅保存每个 `wifi-device` 的 `disabled` 状态。
+- 左拨（GPIO0 高电平）将所有 radio 设为关闭并执行 `wifi reload`。
+- 右拨（GPIO0 低电平）恢复保存的各 radio 状态并执行 `wifi reload`。
+- 重复保存 LuCI 配置不会覆盖快照，避免在 Wi‑Fi 已被左拨关闭时把“全关闭”误存为原始状态。
+- 在 LuCI 中关闭 WiFi 模块时会先恢复快照，防止退出控制后 Wi‑Fi 意外保持关闭。
+- 快照不包含 SSID、密钥、信道或其他无线参数。
+
+快照保存在 `/etc/config/x1pro-toggle` 的 `wifi_state` section 中。模块默认关闭，安装或升级不会改变当前 Wi‑Fi 状态。
+
 ## 结论
 
 本方案不运行轮询守护进程。GPIO0 在 DTS 中注册为 `gpio-keys` 的 `EV_SW`，由内核监听上升沿和下降沿；状态改变时，`gpio-button-hotplug` 产生 `pressed`/`released` 事件，procd 根据 `/etc/hotplug.json` 调用 `/etc/rc.button/BTN_0`。
