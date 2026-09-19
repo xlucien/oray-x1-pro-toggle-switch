@@ -17,6 +17,26 @@ local function cfg_set_bool(key, value)
     os.execute(string.format("uci -q set x1pro-toggle.main.%s='%s'", key, value))
 end
 
+local function valid_proxy_target(value)
+    local valid = { auto=true, passwall=true, openclash=true, ssrplus=true,
+        nikki=true, daed=true, homeproxy=true, mihomo=true }
+    return valid[value] and value or "auto"
+end
+
+local function proxy_status(target)
+    target = valid_proxy_target(target or cfg_get("proxy_target", "auto"))
+    local f = io.popen("/usr/sbin/x1pro-toggle-proxy status " .. target .. " 2>/dev/null")
+    local result = { target = "none", state = "not_installed", configured = false, running = false }
+    if not f then return result end
+    for line in f:lines() do
+        local key, value = line:match("^([a-z_]+)=(.*)$")
+        if key == "target" or key == "state" then result[key] = value
+        elseif key == "configured" or key == "running" then result[key] = value == "1" end
+    end
+    f:close()
+    return result
+end
+
 local function physical_state()
     local f = io.open("/tmp/x1pro-toggle-state", "r")
     if not f then return "0" end
@@ -50,6 +70,11 @@ function api()
 
     if method == "GET" then
         local physical = physical_state()
+        if http.formvalue("brief") == "1" then
+            json_out({ success = true, data = { current_mode = physical == "1" and "0" or "1" } })
+            return
+        end
+        local proxy = proxy_status()
         json_out({ success = true, data = {
             global_enabled = cfg_get("global_enabled", "0") == "1",
             led_enabled = cfg_get("led_enabled", "0") == "1",
@@ -58,6 +83,11 @@ function api()
             wifi_enabled = cfg_get("wifi_enabled", "0") == "1",
             wifi_left_action = cfg_get("wifi_high_action", "0") == "1",
             wifi_right_action = cfg_get("wifi_low_action", "1") == "1",
+            proxy_enabled = cfg_get("proxy_enabled", "0") == "1",
+            proxy_target = cfg_get("proxy_target", "auto"),
+            proxy_left_action = cfg_get("proxy_high_action", "0") == "1",
+            proxy_right_action = cfg_get("proxy_low_action", "1") == "1",
+            proxy_status = proxy,
             passwall_enabled = cfg_get("passwall_enabled", "0") == "1",
             passwall_left_action = cfg_get("passwall_high_action", "1") == "1",
             passwall_right_action = cfg_get("passwall_low_action", "0") == "1",
@@ -73,9 +103,18 @@ function api()
         return
     end
 
+    if method == "POST" and http.formvalue("action") == "detect_proxy" then
+        json_out({ success = true, proxy_status = proxy_status(http.formvalue("proxy_target")) })
+        return
+    end
+
     if method == "POST" and http.formvalue("action") == "save" then
         local old_wifi_enabled = cfg_get("wifi_enabled", "0")
         local new_wifi_enabled = http.formvalue("wifi_enabled") == "1" and "1" or "0"
+        local old_proxy_enabled = cfg_get("proxy_enabled", "0")
+        local old_proxy_target = cfg_get("proxy_target", "auto")
+        local new_proxy_enabled = http.formvalue("proxy_enabled") == "1" and "1" or "0"
+        local new_proxy_target = valid_proxy_target(http.formvalue("proxy_target") or "auto")
         if old_wifi_enabled == "0" and new_wifi_enabled == "1" then
             os.execute("/usr/sbin/x1pro-toggle-wifi snapshot >/dev/null 2>&1")
         end
@@ -87,6 +126,9 @@ function api()
             wifi_enabled = "wifi_enabled",
             wifi_left_action = "wifi_high_action",
             wifi_right_action = "wifi_low_action",
+            proxy_enabled = "proxy_enabled",
+            proxy_left_action = "proxy_high_action",
+            proxy_right_action = "proxy_low_action",
             passwall_enabled = "passwall_enabled",
             passwall_left_action = "passwall_high_action",
             passwall_right_action = "passwall_low_action",
@@ -100,12 +142,18 @@ function api()
         for form_key, uci_key in pairs(map) do
             cfg_set_bool(uci_key, http.formvalue(form_key) or "0")
         end
+        os.execute(string.format("uci -q set x1pro-toggle.main.proxy_target='%s'", new_proxy_target))
         os.execute("uci -q commit x1pro-toggle")
         if old_wifi_enabled == "1" and new_wifi_enabled == "0" then
             os.execute("/usr/sbin/x1pro-toggle-wifi restore >/dev/null 2>&1")
         end
+        if new_proxy_enabled == "1" and (old_proxy_enabled == "0" or old_proxy_target ~= new_proxy_target) then
+            os.execute("/usr/sbin/x1pro-toggle-proxy snapshot >/dev/null 2>&1")
+        elseif old_proxy_enabled == "1" and new_proxy_enabled == "0" then
+            os.execute("/usr/sbin/x1pro-toggle-proxy restore >/dev/null 2>&1")
+        end
         apply_current_state()
-        json_out({ success = true })
+        json_out({ success = true, proxy_status = proxy_status(new_proxy_target) })
         return
     end
 

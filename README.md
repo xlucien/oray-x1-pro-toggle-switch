@@ -15,6 +15,12 @@ LuCI 中提供独立的 WiFi 功能模块，默认映射为左拨关闭、右拨
 
 快照保存在 `/etc/config/x1pro-toggle` 的 `wifi_state` section 中。模块默认关闭，安装或升级不会改变当前 Wi‑Fi 状态。
 
+## 代理控制
+
+LuCI 的“代理控制”选项卡支持自动检测、PassWall、OpenClash、SSR Plus、Nikki、daed、HomeProxy 和 MihomoTProxy。启用模块时保存所选代理的配置与运行状态；左拨停止代理，右拨恢复快照。自动检测按“正在运行 → 配置启用 → 已安装”选择唯一候选，发现多个候选时报告冲突并要求手动选择。
+
+检测只在打开页面、点击“重新检测”或拨杆状态变化时执行，没有常驻轮询。状态分为未安装、已安装未启用、正在运行、配置已启用但启动异常和多代理冲突。脚本只修改所选代理自身的启用项并调用其 init 服务，不改动通用 network、wireless 配置。
+
 ## 结论
 
 本方案不运行轮询守护进程。GPIO0 在 DTS 中注册为 `gpio-keys` 的 `EV_SW`，由内核监听上升沿和下降沿；状态改变时，`gpio-button-hotplug` 产生 `pressed`/`released` 事件，procd 根据 `/etc/hotplug.json` 调用 `/etc/rc.button/BTN_0`。
@@ -78,6 +84,7 @@ debugfs 将该引脚显示为 `gpio-512`，这是控制器全局基址 512 加�
 /etc/x1pro-toggle.d/low.example
 /usr/sbin/x1pro-toggle-apply
 /usr/sbin/x1pro-toggle-sync
+/usr/sbin/x1pro-toggle-proxy
 ```
 
 把本目录上传到路由器，例如 `/tmp/x1pro-gpio0-toggle`，然后：
@@ -98,18 +105,20 @@ X1 Pro 实机 DTS 使用 `GPIO_ACTIVE_LOW`，处理脚本仍按物理高低电�
 | 高 `1` | `released` | `*_high_action` | Left |
 | 低 `0` | `pressed` | `*_low_action` | Right |
 
-适配包保留原固件的默认动作映射，但所有动作默认禁用。只启用需要的项目，例如仅用开关控制 OpenClash：
+所有动作默认禁用。启用自动检测的代理控制：
 
 ```sh
 uci set x1pro-toggle.main.global_enabled='1'
-uci set x1pro-toggle.main.openclash_enabled='1'
-uci set x1pro-toggle.main.openclash_high_action='0'
-uci set x1pro-toggle.main.openclash_low_action='1'
+uci set x1pro-toggle.main.proxy_enabled='1'
+uci set x1pro-toggle.main.proxy_target='auto'
+uci set x1pro-toggle.main.proxy_high_action='0'
+uci set x1pro-toggle.main.proxy_low_action='1'
 uci commit x1pro-toggle
+/usr/sbin/x1pro-toggle-proxy snapshot
 /etc/init.d/x1pro-toggle reload
 ```
 
-这表示 GPIO0 高电平关闭 OpenClash，低电平开启 OpenClash。脚本仅修改被显式启用的 LED/代理服务，不改 network、wireless、防火墙或其他网络配置。
+也可把 `proxy_target` 改为 `passwall`、`openclash`、`ssrplus`、`nikki`、`daed`、`homeproxy` 或 `mihomo`。这表示 GPIO0 高电平关闭所选代理，低电平恢复启用模块时保存的状态。
 
 如需自定义动作，把示例复制为可执行 hook：
 

@@ -15,6 +15,13 @@ config x1pro_toggle 'main'
 	option wifi_high_action '0'
 	option wifi_low_action '1'
 
+	# Proxy module snapshots the selected proxy when enabled.
+	# Left/HIGH stops it; Right/LOW restores the saved state.
+	option proxy_enabled '0'
+	option proxy_target 'auto'
+	option proxy_high_action '0'
+	option proxy_low_action '1'
+
 	option passwall_enabled '0'
 	option passwall_high_action '1'
 	option passwall_low_action '0'

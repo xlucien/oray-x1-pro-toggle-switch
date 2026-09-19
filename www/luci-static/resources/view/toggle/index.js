@@ -3,6 +3,7 @@
 
     var apiUrl = '/cgi-bin/luci/admin/system/toggle/api';
     var app, saveBtn, statusText, errorDiv, globalSwitch;
+    var proxyEnable, proxyTarget, proxyStatusText, proxyDetectBtn;
     var statusInterval = null;
 
     var controls = {};
@@ -70,7 +71,7 @@
 
     function fetchMode() {
         var xhr = new XMLHttpRequest();
-        var url = apiUrl + '?_=' + Date.now() + '&r=' + Math.random();
+        var url = apiUrl + '?brief=1&_=' + Date.now() + '&r=' + Math.random();
         xhr.open('GET', url, true);
         xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         xhr.setRequestHeader('Pragma', 'no-cache');
@@ -211,6 +212,85 @@
         return { row: row, input_on: input_on, input_off: input_off };
     }
 
+    function proxyLabel(target) {
+        var labels = {
+            none: '无', conflict: '检测到多个代理', passwall: 'PassWall',
+            openclash: 'OpenClash', ssrplus: 'SSR Plus', nikki: 'Nikki',
+            daed: 'daed', homeproxy: 'HomeProxy', mihomo: 'MihomoTProxy'
+        };
+        return labels[target] || target;
+    }
+
+    function renderProxyStatus(status) {
+        status = status || { target: 'none', state: 'not_installed' };
+        var states = {
+            not_installed: '未安装', installed: '已安装，未启用',
+            running: '正在运行', error: '配置已启用，但启动异常',
+            conflict: '检测到多个代理，请手动选择'
+        };
+        proxyStatusText.className = 'proxy-status status-' + status.state;
+        proxyStatusText.textContent = '当前状态：' +
+            (status.target === 'none' ? '' : proxyLabel(status.target) + ' · ') +
+            (states[status.state] || status.state);
+    }
+
+    function buildProxyPane(data) {
+        var pane = create('div', { 'class': 'tab-pane', 'id': 'proxy-pane' });
+        var card = create('div', { 'class': 'proxy-card' });
+        card.appendChild(create('div', { 'class': 'func-title', 'text': '🌐 代理控制' }));
+
+        var enableRow = create('div', { 'class': 'toggle-item proxy-row' });
+        enableRow.appendChild(create('span', { 'class': 'toggle-label', 'text': '启用代理拨杆控制' }));
+        proxyEnable = create('input', { 'type': 'checkbox', 'checked': data.proxy_enabled === true });
+        enableRow.appendChild(create('label', { 'class': 'toggle-switch' }, [proxyEnable, create('span', { 'class': 'toggle-slider' })]));
+        card.appendChild(enableRow);
+
+        var selectRow = create('div', { 'class': 'proxy-field' });
+        selectRow.appendChild(create('label', { 'text': '代理选择' }));
+        proxyTarget = create('select', { 'class': 'proxy-select' });
+        var choices = [
+            ['auto', '自动检测'], ['passwall', 'PassWall'], ['openclash', 'OpenClash'],
+            ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'],
+            ['homeproxy', 'HomeProxy'], ['mihomo', 'MihomoTProxy']
+        ];
+        choices.forEach(function(item) {
+            var option = create('option', { 'value': item[0], 'text': item[1] });
+            if ((data.proxy_target || 'auto') === item[0]) option.selected = true;
+            proxyTarget.appendChild(option);
+        });
+        selectRow.appendChild(proxyTarget);
+        card.appendChild(selectRow);
+
+        var actions = create('div', { 'class': 'proxy-actions' });
+        actions.appendChild(create('div', { 'class': 'proxy-action', 'text': '⬅ 左拨：关闭代理' }));
+        actions.appendChild(create('div', { 'class': 'proxy-action', 'text': '➡ 右拨：恢复代理' }));
+        card.appendChild(actions);
+
+        proxyStatusText = create('div', { 'class': 'proxy-status' });
+        card.appendChild(proxyStatusText);
+        renderProxyStatus(data.proxy_status);
+
+        proxyDetectBtn = create('button', { 'class': 'btn-detect', 'text': '重新检测' });
+        proxyDetectBtn.addEventListener('click', function() {
+            proxyDetectBtn.disabled = true;
+            post({ action: 'detect_proxy', proxy_target: proxyTarget.value }, function(resp) {
+                proxyDetectBtn.disabled = false;
+                if (resp.success) renderProxyStatus(resp.proxy_status);
+                else showError(resp.error || '检测失败');
+            });
+        });
+        card.appendChild(proxyDetectBtn);
+        pane.appendChild(card);
+        return pane;
+    }
+
+    function activateTab(name) {
+        var buttons = document.querySelectorAll('.tab-button');
+        var panes = document.querySelectorAll('.tab-pane');
+        for (var i = 0; i < buttons.length; i++) buttons[i].classList.toggle('active', buttons[i].getAttribute('data-tab') === name);
+        for (var j = 0; j < panes.length; j++) panes[j].classList.toggle('active', panes[j].id === name + '-pane');
+    }
+
     function syncControlsFromData(data) {
         if (globalSwitch) {
             globalSwitch.checked = data.global_enabled === true;
@@ -281,14 +361,19 @@
         globalBox.appendChild(rowGlobal);
         app.appendChild(globalBox);
 
+        var tabs = create('div', { 'class': 'tabs' });
+        var basicTab = create('button', { 'class': 'tab-button active', 'data-tab': 'basic', 'text': '基本设置' });
+        var proxyTab = create('button', { 'class': 'tab-button', 'data-tab': 'proxy', 'text': '代理控制' });
+        basicTab.addEventListener('click', function() { activateTab('basic'); });
+        proxyTab.addEventListener('click', function() { activateTab('proxy'); });
+        tabs.appendChild(basicTab); tabs.appendChild(proxyTab); app.appendChild(tabs);
+
+        var basicPane = create('div', { 'class': 'tab-pane active', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box' });
 
         var blocks = [
             { title: '🔦 ' + _('LED'), prefix: 'led', labels: [_('ON'), _('OFF')] },
-            { title: '📶 ' + _('WiFi'), prefix: 'wifi', labels: [_('ON'), _('OFF')] },
-            { title: '🌐 ' + _('PassWall'), prefix: 'passwall', labels: [_('Enable'), _('Disable')] },
-            { title: '🌐 ' + _('OpenClash'), prefix: 'openclash', labels: [_('Enable'), _('Disable')] },
-            { title: '🚀 ' + _('SSR Plus'), prefix: 'ssr', labels: [_('Enable'), _('Disable')] }
+            { title: '📶 ' + _('WiFi'), prefix: 'wifi', labels: [_('ON'), _('OFF')] }
         ];
 
         for (var i = 0; i < blocks.length; i++) {
@@ -296,7 +381,9 @@
             gridBox.appendChild(block);
         }
 
-        app.appendChild(gridBox);
+        basicPane.appendChild(gridBox);
+        app.appendChild(basicPane);
+        app.appendChild(buildProxyPane(data));
 
         var btnBox = create('div', { 'class': 'btn-box' });
         saveBtn = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
@@ -308,6 +395,10 @@
 
             var postData = { action: 'save' };
             postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
+            postData['proxy_enabled'] = proxyEnable.checked ? '1' : '0';
+            postData['proxy_target'] = proxyTarget.value;
+            postData['proxy_left_action'] = '0';
+            postData['proxy_right_action'] = '1';
             for (var prefix in controls) {
                 if (controls.hasOwnProperty(prefix)) {
                     var group = controls[prefix];
@@ -325,6 +416,7 @@
                     saveBtn.textContent = _('Saved');
                     setTimeout(function() { saveBtn.textContent = origText; }, 1500);
                     syncControlsFromPost(postData);
+                    if (resp.proxy_status) renderProxyStatus(resp.proxy_status);
                 } else {
                     showError(resp.error || _('Unknown error'));
                     saveBtn.textContent = _('Save failed');

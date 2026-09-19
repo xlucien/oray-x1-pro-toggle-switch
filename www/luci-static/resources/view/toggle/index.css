@@ -35,6 +35,88 @@
     margin-bottom: 20px;
 }
 
+.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin: 0 0 18px;
+    border-bottom: 1px solid #ddd;
+}
+.tab-button {
+    padding: 10px 22px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+}
+.tab-button.active {
+    color: #1976D2;
+    border-bottom-color: #2196F3;
+    font-weight: bold;
+}
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.proxy-card {
+    max-width: 720px;
+    margin: 0 auto 20px;
+    padding: 18px 24px 22px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.proxy-row { justify-content: space-between !important; }
+.proxy-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 0;
+    border-top: 1px solid #eee;
+}
+.proxy-field label { color: #444; font-size: 14px; }
+.proxy-select {
+    min-width: 210px;
+    padding: 7px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+}
+.proxy-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 8px 0 14px;
+}
+.proxy-action {
+    padding: 11px;
+    background: #f7f8fa;
+    border-radius: 6px;
+    color: #444;
+}
+.proxy-status {
+    padding: 11px 14px;
+    margin: 10px 0 14px;
+    border-radius: 6px;
+    background: #f2f4f7;
+    color: #555;
+}
+.status-running { background: #e8f5e9; color: #2e7d32; }
+.status-error, .status-conflict { background: #ffebee; color: #c62828; }
+.status-installed { background: #fff8e1; color: #8d6e00; }
+.btn-detect {
+    padding: 7px 20px;
+    border: 1px solid #2196F3;
+    border-radius: 4px;
+    background: #fff;
+    color: #1976D2;
+    cursor: pointer;
+}
+.btn-detect:disabled { opacity: .6; cursor: wait; }
+
 .func-block {
     background: #fff;
     border-radius: 10px;
@@ -193,4 +275,7 @@
     #toggle-app {
         padding: 15px;
     }
+    .proxy-actions { grid-template-columns: 1fr; }
+    .proxy-field { align-items: stretch; flex-direction: column; text-align: left; }
+    .proxy-select { width: 100%; min-width: 0; }
 }
