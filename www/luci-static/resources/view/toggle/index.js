@@ -218,7 +218,7 @@
             conflict: '检测到多个代理，请手动选择'
         };
         proxyStatusText.className = 'proxy-status status-' + status.state;
-        proxyStatusText.textContent = '当前状态：' +
+        proxyStatusText.textContent = '运行状态：' +
             (status.target === 'none' ? '' : proxyLabel(status.target) + ' · ') +
             (states[status.state] || status.state);
     }
@@ -238,7 +238,7 @@
         card.appendChild(enableRow);
 
         var selectRow = create('div', { 'class': 'proxy-field' });
-        selectRow.appendChild(create('label', { 'text': '代理选择' }));
+        selectRow.appendChild(create('label', { 'text': '代理程序' }));
         proxyTarget = create('select', { 'class': 'proxy-select' });
         var choices = [
             ['auto', '自动检测'], ['passwall', 'PassWall'], ['openclash', 'OpenClash'],
@@ -417,7 +417,7 @@
 
         var globalBox = create('div', { 'class': 'global-box' });
         var rowGlobal = create('div', { 'class': 'toggle-item' });
-        var labelGlobal = create('span', { 'class': 'toggle-label', 'text': _('Global Enable') });
+        var labelGlobal = create('span', { 'class': 'toggle-label', 'text': '启用拨杆控制' });
         globalSwitch = create('input', { 'type': 'checkbox', 'checked': data.global_enabled === true });
         var switchLabel = create('label', { 'class': 'toggle-switch' }, [
             globalSwitch,
@@ -428,11 +428,10 @@
         globalBox.appendChild(rowGlobal);
         paddlePage.appendChild(globalBox);
 
-        paddlePage.appendChild(create('div', { 'class': 'group-heading', 'text': '拨杆控制（LED / WiFi / 代理三选一）' }));
         var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box function-proxy-grid' });
         var combined = create('div', { 'class': 'func-block combined-card' });
-        combined.appendChild(create('div', { 'class': 'func-title', 'text': 'LED / WiFi / 代理控制' }));
+        combined.appendChild(create('div', { 'class': 'func-title', 'text': '功能设置' }));
         var featureRow = create('div', { 'class': 'proxy-field feature-picker' });
         featureRow.appendChild(create('label', { 'text': '控制功能' }));
         var featureSelect = create('select', { 'class': 'proxy-select' });
@@ -457,12 +456,7 @@
         leftRow.appendChild(create('label', { 'text': '左拨动作' }));
         var leftSelect = create('select', { 'class': 'proxy-select' });
         leftRow.appendChild(wrapSelect(leftSelect));
-        var rightRow = create('div', { 'class': 'proxy-field' });
-        rightRow.appendChild(create('label', { 'text': '右拨动作' }));
-        var rightSelect = create('select', { 'class': 'proxy-select' });
-        rightRow.appendChild(wrapSelect(rightSelect));
         sharedActions.appendChild(leftRow);
-        sharedActions.appendChild(rightRow);
         var actionSummary = create('div', { 'class': 'proxy-action-hint' });
         sharedActions.appendChild(actionSummary);
         combined.appendChild(sharedActions);
@@ -492,8 +486,10 @@
                 actionSummary.textContent = '未启用拨杆控制';
                 return;
             }
+            var labels = actionLabelsFor(featureSelect.value);
+            var rightText = leftSelect.value === '1' ? labels[1][1] : labels[0][1];
             actionSummary.textContent = '左拨：' + leftSelect.options[leftSelect.selectedIndex].text +
-                '；右拨：' + rightSelect.options[rightSelect.selectedIndex].text + '。';
+                '；右拨：' + rightText + '。';
         }
         function showSelectedFeature() {
             var feature = featureSelect.value;
@@ -502,12 +498,10 @@
             proxyEnable.checked = feature === 'proxy';
             var disabled = feature === 'none';
             leftSelect.disabled = disabled;
-            rightSelect.disabled = disabled;
             sharedActions.classList.toggle('is-disabled', disabled);
             if (!disabled) {
                 var labels = actionLabelsFor(feature);
                 fillActionSelect(leftSelect, labels, controls[feature].left_on.checked ? '1' : '0');
-                fillActionSelect(rightSelect, labels, controls[feature].right_on.checked ? '1' : '0');
             }
             updateActionSummary();
             proxyPane.classList.toggle('is-disabled', feature !== 'proxy');
@@ -518,14 +512,6 @@
             if (featureSelect.value === 'none') return;
             var leftOn = leftSelect.value === '1';
             setStoredActions(featureSelect.value, leftOn);
-            rightSelect.value = leftOn ? '0' : '1';
-            updateActionSummary();
-        });
-        rightSelect.addEventListener('change', function() {
-            if (featureSelect.value === 'none') return;
-            var rightOn = rightSelect.value === '1';
-            setStoredActions(featureSelect.value, !rightOn);
-            leftSelect.value = rightOn ? '0' : '1';
             updateActionSummary();
         });
         featureSelect.addEventListener('change', showSelectedFeature);
