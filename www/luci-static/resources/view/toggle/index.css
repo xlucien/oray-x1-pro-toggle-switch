@@ -51,6 +51,8 @@
     box-sizing: border-box;
 }
 .grid-proxy-pane { min-width: 0; }
+.grid-proxy-pane.is-disabled { opacity: .45; }
+.grid-proxy-pane.is-disabled .proxy-card { box-shadow: none; }
 .combined-card {
     display: flex;
     flex-direction: column;
@@ -64,6 +66,17 @@
 }
 .combined-feature .func-title {
     display: none;
+}
+.combined-feature > .toggle-item,
+.grid-proxy-pane .proxy-row {
+    display: none !important;
+}
+.combined-card.no-action::after {
+    content: "请选择 LED 或 WiFi 设置左右拨动作";
+    display: block;
+    padding: 34px 10px;
+    color: #888;
+    font-size: 13px;
 }
 .feature-picker {
     border-top: 0;
@@ -93,6 +106,13 @@
     margin: 0 0 18px;
     border-bottom: 1px solid #ddd;
 }
+.page-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 720px;
+    margin: 0 auto 18px;
+}
+.tab-page { display: none; }
+.tab-page.active { display: block; }
 .tab-button {
     padding: 10px 6px;
     border: 0;

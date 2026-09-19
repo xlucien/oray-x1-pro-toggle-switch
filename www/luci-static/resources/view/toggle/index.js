@@ -376,9 +376,27 @@
         hideError();
         app.innerHTML = '';
 
+        var tabBar = create('div', { 'class': 'tabs page-tabs' });
+        var paddleTab = create('button', { 'type': 'button', 'class': 'tab-button active', 'text': '拨杆控制' });
+        var resetTab = create('button', { 'type': 'button', 'class': 'tab-button', 'text': 'RESET 按键' });
+        tabBar.appendChild(paddleTab); tabBar.appendChild(resetTab); app.appendChild(tabBar);
+        var paddlePage = create('div', { 'class': 'tab-page active' });
+        var resetPage = create('div', { 'class': 'tab-page' });
+        app.appendChild(paddlePage); app.appendChild(resetPage);
+
+        function selectPage(page) {
+            var paddle = page === 'paddle';
+            paddleTab.classList.toggle('active', paddle);
+            resetTab.classList.toggle('active', !paddle);
+            paddlePage.classList.toggle('active', paddle);
+            resetPage.classList.toggle('active', !paddle);
+        }
+        paddleTab.addEventListener('click', function() { selectPage('paddle'); });
+        resetTab.addEventListener('click', function() { selectPage('reset'); });
+
         var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
         statusText = create('div', { 'class': 'current-mode', 'text': _('Current switch position:') + ' ' + modeTxt });
-        app.appendChild(statusText);
+        paddlePage.appendChild(statusText);
 
         var globalBox = create('div', { 'class': 'global-box' });
         var rowGlobal = create('div', { 'class': 'toggle-item' });
@@ -391,9 +409,9 @@
         rowGlobal.appendChild(labelGlobal);
         rowGlobal.appendChild(switchLabel);
         globalBox.appendChild(rowGlobal);
-        app.appendChild(globalBox);
+        paddlePage.appendChild(globalBox);
 
-        app.appendChild(create('div', { 'class': 'group-heading', 'text': '拨杆控制（LED / WiFi / 代理三选一）' }));
+        paddlePage.appendChild(create('div', { 'class': 'group-heading', 'text': '拨杆控制（LED / WiFi / 代理三选一）' }));
         var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box function-proxy-grid' });
         var combined = create('div', { 'class': 'func-block combined-card' });
@@ -401,9 +419,10 @@
         var featureRow = create('div', { 'class': 'proxy-field feature-picker' });
         featureRow.appendChild(create('label', { 'text': '控制功能' }));
         var featureSelect = create('select', { 'class': 'proxy-select' });
-        [['led', 'LED'], ['wifi', 'WiFi']].forEach(function(item) {
+        var selectedFeature = data.proxy_enabled ? 'proxy' : (data.wifi_enabled ? 'wifi' : (data.led_enabled ? 'led' : 'none'));
+        [['none', '不启用'], ['led', 'LED'], ['wifi', 'WiFi'], ['proxy', '代理']].forEach(function(item) {
             var opt = create('option', { 'value': item[0], 'text': item[1] });
-            if ((data.wifi_enabled ? 'wifi' : 'led') === item[0]) opt.selected = true;
+            if (selectedFeature === item[0]) opt.selected = true;
             featureSelect.appendChild(opt);
         });
         featureRow.appendChild(wrapSelect(featureSelect));
@@ -414,28 +433,35 @@
         wifiBlock.className += ' combined-feature';
         combined.appendChild(ledBlock);
         combined.appendChild(wifiBlock);
+        var proxyPane = buildProxyPane(data);
+        proxyPane.className += ' grid-proxy-pane';
         function showSelectedFeature() {
+            var feature = featureSelect.value;
+            controls.led.enabled.checked = feature === 'led';
+            controls.wifi.enabled.checked = feature === 'wifi';
+            proxyEnable.checked = feature === 'proxy';
             ledBlock.style.display = featureSelect.value === 'led' ? 'block' : 'none';
             wifiBlock.style.display = featureSelect.value === 'wifi' ? 'block' : 'none';
+            combined.classList.toggle('no-action', feature === 'none' || feature === 'proxy');
+            proxyPane.classList.toggle('is-disabled', feature !== 'proxy');
+            proxyTarget.disabled = feature !== 'proxy';
+            proxyDetectBtn.disabled = feature !== 'proxy';
         }
         featureSelect.addEventListener('change', showSelectedFeature);
         showSelectedFeature();
         gridBox.appendChild(combined);
-        var proxyPane = buildProxyPane(data);
-        proxyPane.className += ' grid-proxy-pane';
         gridBox.appendChild(proxyPane);
         basicPane.appendChild(gridBox);
-        app.appendChild(basicPane);
-        app.appendChild(create('div', { 'class': 'group-heading reset-heading', 'text': 'RESET 按键控制（独立运行）' }));
-        app.appendChild(buildResetPane(data));
+        paddlePage.appendChild(basicPane);
+        resetPage.appendChild(create('div', { 'class': 'group-heading reset-heading', 'text': 'RESET 按键控制（独立运行）' }));
+        resetPage.appendChild(buildResetPane(data));
 
-        var btnBox = create('div', { 'class': 'btn-box' });
-        saveBtn = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
-        saveBtn.addEventListener('click', function() {
+        function saveAll(button) {
             hideError();
-            saveBtn.disabled = true;
-            var origText = saveBtn.textContent;
-            saveBtn.textContent = _('Saving...');
+            var allSaveButtons = document.querySelectorAll('.btn-save');
+            for (var b = 0; b < allSaveButtons.length; b++) allSaveButtons[b].disabled = true;
+            var origText = button.textContent;
+            button.textContent = _('Saving...');
 
             var postData = { action: 'save' };
             postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
@@ -459,21 +485,27 @@
             console.log('[toggle] Sending data:', postData);
 
             post(postData, function(resp) {
-                saveBtn.disabled = false;
+                for (var b = 0; b < allSaveButtons.length; b++) allSaveButtons[b].disabled = false;
                 if (resp.success) {
-                    saveBtn.textContent = _('Saved');
-                    setTimeout(function() { saveBtn.textContent = origText; }, 1500);
+                    button.textContent = _('Saved');
+                    setTimeout(function() { button.textContent = origText; }, 1500);
                     syncControlsFromPost(postData);
                     if (resp.proxy_status) renderProxyStatus(resp.proxy_status);
                 } else {
                     showError(resp.error || _('Unknown error'));
-                    saveBtn.textContent = _('Save failed');
-                    setTimeout(function() { saveBtn.textContent = origText; }, 3000);
+                    button.textContent = _('Save failed');
+                    setTimeout(function() { button.textContent = origText; }, 3000);
                 }
             });
-        });
-        btnBox.appendChild(saveBtn);
-        app.appendChild(btnBox);
+        }
+        function addSaveButton(page) {
+            var btnBox = create('div', { 'class': 'btn-box' });
+            var button = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
+            button.addEventListener('click', function() { saveAll(button); });
+            btnBox.appendChild(button); page.appendChild(btnBox);
+        }
+        addSaveButton(paddlePage);
+        addSaveButton(resetPage);
 
         syncControlsFromData(data);
         statusInterval = setInterval(fetchMode, 2000);
