@@ -119,8 +119,8 @@
         proxyStatusText.textContent = '当前状态：' + (status.target === 'none' ? '' : proxyLabel(status.target) + ' · ') + (labels[status.state] || status.state);
     }
     function buildProxySection(data) {
-        proxyPanel = create('div', { 'class': 'cbi-section toggle-subsection', id: 'proxy-settings' });
-        proxyPanel.appendChild(create('h4', { text: '代理设置' }));
+        proxyPanel = create('div', { 'class': 'ts-card toggle-subsection', id: 'proxy-settings' });
+        proxyPanel.appendChild(create('h3', { text: '代理设置' }));
         proxyTarget = makeSelect([['auto', '自动检测'], ['passwall', 'PassWall'], ['openclash', 'OpenClash'],
             ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'], ['homeproxy', 'HomeProxy'], ['mihomo', 'MihomoTProxy']], data.proxy_target || 'auto');
         proxyPanel.appendChild(formRow('代理程序', selectWrap(proxyTarget)));
@@ -154,7 +154,7 @@
         return formRow(label, create('span', { 'class': 'toggle-reset-controls' }, [enabled, selectWrap(action)]));
     }
     function buildResetSection(data) {
-        var section = create('div', { 'class': 'cbi-section toggle-section' });
+        var section = create('div', { 'class': 'ts-card toggle-section' });
         section.appendChild(create('h3', { text: 'RESET 按键控制' }));
         section.appendChild(create('div', { 'class': 'cbi-section-descr', text: '独立运行，不受拨杆总开关影响；连击判定时间为 1200 毫秒。' }));
         section.appendChild(buildResetRow('single', '单击', data));
@@ -204,9 +204,9 @@
             wifi: { left: data.wifi_left_action === true, right: data.wifi_right_action === true },
             proxy: { left: data.proxy_left_action === true, right: data.proxy_right_action === true }
         };
-        statusText = create('div', { 'class': 'alert-message notice toggle-mode' }); updateMode(data.current_mode); app.appendChild(statusText);
+        statusText = create('div', { 'class': 'ts-status toggle-mode' }); updateMode(data.current_mode); app.appendChild(statusText);
 
-        var main = create('div', { 'class': 'cbi-section toggle-section' });
+        var main = create('div', { 'class': 'ts-global toggle-section' });
         main.appendChild(create('h3', { text: '拨杆控制' }));
         main.appendChild(create('div', { 'class': 'cbi-section-descr', text: 'LED、WiFi、代理三选一；总开关仅控制 GPIO0 拨杆功能。' }));
         globalSwitch = create('input', { type: 'checkbox', 'class': 'cbi-input-checkbox', checked: data.global_enabled === true });
@@ -217,11 +217,15 @@
         leftAction = makeSelect([], '0'); rightAction = makeSelect([], '0');
         main.appendChild(formRow('左拨动作', selectWrap(leftAction)));
         main.appendChild(formRow('右拨动作', selectWrap(rightAction)));
-        app.appendChild(main); app.appendChild(buildProxySection(data)); app.appendChild(buildResetSection(data));
+        app.appendChild(main);
+        var grid = create('div', { 'class': 'ts-grid' });
+        grid.appendChild(buildProxySection(data));
+        grid.appendChild(buildResetSection(data));
+        app.appendChild(grid);
         featureSelect.addEventListener('change', function() { selectFeature(featureSelect.value); });
         selectFeature(activeFeature);
 
-        var actions = create('div', { 'class': 'cbi-page-actions toggle-actions' });
+        var actions = create('div', { 'class': 'cbi-page-actions toggle-actions ts-save' });
         var saveOnly = create('button', { type: 'button', 'class': 'btn cbi-button cbi-button-save', text: '保存' });
         var saveApply = create('button', { type: 'button', 'class': 'btn cbi-button cbi-button-apply', text: '保存并应用' });
         saveOnly.addEventListener('click', function() { save('save_only', saveOnly); });
