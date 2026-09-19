@@ -393,23 +393,39 @@
         globalBox.appendChild(rowGlobal);
         app.appendChild(globalBox);
 
-        app.appendChild(create('div', { 'class': 'group-heading', 'text': 'GPIO0 拨杆控制（LED / WiFi / 代理三选一）' }));
+        app.appendChild(create('div', { 'class': 'group-heading', 'text': '拨杆控制（LED / WiFi / 代理三选一）' }));
         var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
-        var gridBox = create('div', { 'class': 'grid-box' });
-
-        var blocks = [
-            { title: '🔦 ' + _('LED'), prefix: 'led', labels: [_('ON'), _('OFF')] },
-            { title: '📶 ' + _('WiFi'), prefix: 'wifi', labels: [_('ON'), _('OFF')] }
-        ];
-
-        for (var i = 0; i < blocks.length; i++) {
-            var block = buildFunctionBlock(blocks[i].title, blocks[i].prefix, data, blocks[i].labels);
-            gridBox.appendChild(block);
+        var gridBox = create('div', { 'class': 'grid-box function-proxy-grid' });
+        var combined = create('div', { 'class': 'func-block combined-card' });
+        combined.appendChild(create('div', { 'class': 'func-title', 'text': '🔦 LED / 📶 WiFi 控制' }));
+        var featureRow = create('div', { 'class': 'proxy-field feature-picker' });
+        featureRow.appendChild(create('label', { 'text': '控制功能' }));
+        var featureSelect = create('select', { 'class': 'proxy-select' });
+        [['led', 'LED'], ['wifi', 'WiFi']].forEach(function(item) {
+            var opt = create('option', { 'value': item[0], 'text': item[1] });
+            if ((data.wifi_enabled ? 'wifi' : 'led') === item[0]) opt.selected = true;
+            featureSelect.appendChild(opt);
+        });
+        featureRow.appendChild(wrapSelect(featureSelect));
+        combined.appendChild(featureRow);
+        var ledBlock = buildFunctionBlock('🔦 ' + _('LED'), 'led', data, [_('ON'), _('OFF')]);
+        var wifiBlock = buildFunctionBlock('📶 ' + _('WiFi'), 'wifi', data, [_('ON'), _('OFF')]);
+        ledBlock.className += ' combined-feature';
+        wifiBlock.className += ' combined-feature';
+        combined.appendChild(ledBlock);
+        combined.appendChild(wifiBlock);
+        function showSelectedFeature() {
+            ledBlock.style.display = featureSelect.value === 'led' ? 'block' : 'none';
+            wifiBlock.style.display = featureSelect.value === 'wifi' ? 'block' : 'none';
         }
-
+        featureSelect.addEventListener('change', showSelectedFeature);
+        showSelectedFeature();
+        gridBox.appendChild(combined);
+        var proxyPane = buildProxyPane(data);
+        proxyPane.className += ' grid-proxy-pane';
+        gridBox.appendChild(proxyPane);
         basicPane.appendChild(gridBox);
         app.appendChild(basicPane);
-        app.appendChild(buildProxyPane(data));
         app.appendChild(create('div', { 'class': 'group-heading reset-heading', 'text': 'RESET 按键控制（独立运行）' }));
         app.appendChild(buildResetPane(data));
 

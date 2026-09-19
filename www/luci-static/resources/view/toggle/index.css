@@ -38,6 +38,38 @@
     margin-right: auto;
 }
 
+.function-proxy-grid {
+    align-items: stretch;
+}
+.function-proxy-grid > .func-block,
+.function-proxy-grid > .grid-proxy-pane,
+.function-proxy-grid .proxy-card {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+.grid-proxy-pane { min-width: 0; }
+.combined-card {
+    display: flex;
+    flex-direction: column;
+}
+.combined-feature {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.combined-feature .func-title {
+    display: none;
+}
+.feature-picker {
+    border-top: 0;
+    border-bottom: 1px solid #eee;
+}
+
 .group-heading {
     max-width: 720px;
     margin: 24px auto 14px;
