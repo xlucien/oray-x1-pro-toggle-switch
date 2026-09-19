@@ -4,6 +4,7 @@
 Makefile text eol=lf
 etc/init.d/* text eol=lf
 etc/rc.button/* text eol=lf
+etc/uci-defaults/* text eol=lf
 etc/x1pro-toggle.d/* text eol=lf
 usr/sbin/* text eol=lf
 usr/libexec/* text eol=lf

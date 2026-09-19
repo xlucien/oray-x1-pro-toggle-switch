@@ -33,6 +33,8 @@ RESET 控制独立于 GPIO0 拨杆的总开关。连击窗口为 1200 毫秒，�
 
 RESET 的 WiFi 切换使用独立的一次性 `reset_wifi_state` 快照：关闭前保存各 radio 状态，再次切换时恢复并清除；没有有效快照时不会强制打开全部 radio。安装会把原始脚本备份为 `/etc/rc.button/reset.x1pro-stock`。保存 LuCI 配置会清除尚未结算的连击，长按达到 5 秒也会取消全部短按动作。系统没有挂载 `/overlay` 时沿用原厂保护，不安排恢复出厂动作。
 
+编入固件时，`/etc/uci-defaults/99-toggle-switch` 会在首次启动完成 RESET 接管并启用服务；服务以后每次启动都会自检 `/etc/rc.button/reset`，防止固件升级或文件覆盖后退回原厂“短按重启”逻辑。
+
 ## 结论
 
 本方案不运行轮询守护进程。GPIO0 在 DTS 中注册为 `gpio-keys` 的 `EV_SW`，由内核监听上升沿和下降沿；状态改变时，`gpio-button-hotplug` 产生 `pressed`/`released` 事件，procd 根据 `/etc/hotplug.json` 调用 `/etc/rc.button/BTN_0`。

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
 PKG_VERSION:=1.4.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
 
@@ -35,6 +35,8 @@ define Package/toggle-switch/install
 	$(INSTALL_CONF) ./etc/config/x1pro-toggle $(1)/etc/config/x1pro-toggle
 	$(INSTALL_BIN) ./etc/init.d/x1pro-toggle $(1)/etc/init.d/x1pro-toggle
 	$(INSTALL_BIN) ./etc/rc.button/BTN_0 $(1)/etc/rc.button/BTN_0
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./etc/uci-defaults/99-toggle-switch $(1)/etc/uci-defaults/99-toggle-switch
 	$(INSTALL_DATA) ./etc/x1pro-toggle.d/high.example $(1)/etc/x1pro-toggle.d/high.example
 	$(INSTALL_DATA) ./etc/x1pro-toggle.d/low.example $(1)/etc/x1pro-toggle.d/low.example
 	$(INSTALL_DIR) $(1)/usr/sbin

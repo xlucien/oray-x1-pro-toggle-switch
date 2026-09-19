@@ -3,12 +3,25 @@
 START=99
 STOP=10
 
+install_reset_handler() {
+	local reset='/etc/rc.button/reset'
+	local backup='/etc/rc.button/reset.x1pro-stock'
+	local custom='/usr/libexec/x1pro-reset-button'
+
+	[ -x "$custom" ] || return 0
+	cmp -s "$reset" "$custom" && return 0
+	[ ! -e "$reset" ] || [ -e "$backup" ] || cp "$reset" "$backup"
+	cp "$custom" "$reset"
+	chmod 0755 "$reset"
+}
+
 start() {
+	install_reset_handler
 	# One read at boot; subsequent changes arrive through gpio-button-hotplug.
 	/usr/sbin/x1pro-toggle-sync
 }
 
 reload() {
+	install_reset_handler
 	/usr/sbin/x1pro-toggle-sync
 }
-
