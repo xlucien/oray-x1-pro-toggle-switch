@@ -621,7 +621,7 @@
     return view.extend({
         render: function() {
             if (!document.getElementById('toggle-page-style')) {
-                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css?v=77') });
+                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=78' });
                 document.head.appendChild(link);
             }
             var root = create('div', {}, [
