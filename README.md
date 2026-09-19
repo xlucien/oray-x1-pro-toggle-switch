@@ -1,4 +1,4 @@
-# toggle-switch：Oray X1 Pro GPIO0 拨动开关
+# 拨杆控制：Oray X1 Pro GPIO0 拨动开关
 
 适用于 ImmortalWrt/OpenWrt 的中断驱动拨动开关组件，包含 LuCI 面板、UCI 配置和安装脚本。
 

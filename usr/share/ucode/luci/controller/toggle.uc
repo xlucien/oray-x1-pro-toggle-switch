@@ -111,7 +111,7 @@ function save(requested_action) {
     let new_target = valid_proxy(http.formvalue('proxy_target') ?? 'auto');
 
     if ((new_led == '1') + (new_wifi == '1') + (new_proxy == '1') > 1)
-        return json_out({ success: false, error: 'LED, WiFi and proxy control are mutually exclusive' }, 400);
+        return json_out({ success: false, error: 'LED、WiFi 和代理控制只能选择一项' }, 400);
 
     if (old_wifi == '0' && new_wifi == '1') system('/usr/sbin/x1pro-toggle-wifi snapshot >/dev/null 2>&1');
 
@@ -156,6 +156,6 @@ return {
         if (method == 'POST' && action == 'detect_proxy')
             return json_out({ success: true, proxy_status: proxy_status(http.formvalue('proxy_target')) });
         if (method == 'POST' && (action == 'save' || action == 'save_only')) return save(action);
-        return json_out({ success: false, error: 'Invalid request' }, 400);
+        return json_out({ success: false, error: '无效请求' }, 400);
     }
 };

@@ -12,7 +12,7 @@ define Package/toggle-switch
   SECTION:=luci
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
-  TITLE:=Toggle Switch for Oray X1 Pro
+  TITLE:=Oray X1 Pro 拨杆控制
   PKGARCH:=all
   DEPENDS:=+luci-base +ucode-mod-fs +ucode-mod-uci +ucode-mod-uloop +kmod-gpio-button-hotplug
 endef

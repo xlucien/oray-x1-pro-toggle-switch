@@ -70,7 +70,7 @@
                 try { callback(JSON.parse(xhr.responseText)); }
                 catch(e) { callback({success:false, error:_('Invalid response')}); }
             } else {
-                callback({success:false, error:_('Request failed: ') + xhr.status});
+                callback({success:false, error:'请求失败：' + xhr.status});
             }
         };
         xhr.onerror = function() { callback({success:false, error:_('Network error')}); };
@@ -99,7 +99,7 @@
     function updateMode(mode) {
         if (!statusText) return;
         currentMode = (mode === '1' || mode === 1) ? '1' : '0';
-        var txt = (mode === '1' || mode === 1) ? _('Right') : _('Left');
+        var txt = (mode === '1' || mode === 1) ? '右侧' : '左侧';
         statusText.textContent = '当前拨杆位置：' + txt;
     }
 
@@ -147,7 +147,7 @@
         block.appendChild(create('div', { 'class': 'func-title', 'text': title }));
 
         var rowEnable = create('div', { 'class': 'toggle-item' });
-        var labelEnable = create('span', { 'class': 'toggle-label', 'text': _('Enable') });
+        var labelEnable = create('span', { 'class': 'toggle-label', 'text': '启用' });
         var inputEnable = create('input', { 'type': 'checkbox', 'checked': data[prefix + '_enabled'] === true });
         var switchLabel = create('label', { 'class': 'toggle-switch' }, [
             inputEnable,
@@ -159,13 +159,13 @@
 
         block.appendChild(create('div', { 'class': 'divider' }));
 
-        var labelLeft = create('div', { 'class': 'section-label', 'text': _('Left') });
+        var labelLeft = create('div', { 'class': 'section-label', 'text': '左侧' });
         block.appendChild(labelLeft);
         var leftVal = data[prefix + '_left_action'] === true;
         var rowLeft = createRadioRow(prefix + '_left_action', leftVal, actionLabels);
         block.appendChild(rowLeft.row);
 
-        var labelRight = create('div', { 'class': 'section-label', 'text': _('Right') });
+        var labelRight = create('div', { 'class': 'section-label', 'text': '右侧' });
         block.appendChild(labelRight);
         var rightVal = data[prefix + '_right_action'] === true;
         var rowRight = createRadioRow(prefix + '_right_action', rightVal, actionLabels);
@@ -419,7 +419,7 @@
         paddleTab.addEventListener('click', function() { selectPage('paddle'); });
         resetTab.addEventListener('click', function() { selectPage('reset'); });
 
-        var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
+        var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? '右侧' : '左侧';
         currentMode = (data.current_mode === '1' || data.current_mode === 1) ? '1' : '0';
         var modeBar = create('div', { 'class': 'current-mode' });
         statusText = create('span', { 'class': 'mode-position', 'text': '当前拨杆位置：' + modeTxt });
@@ -451,8 +451,8 @@
         });
         featureRow.appendChild(wrapSelect(featureSelect));
         combined.appendChild(featureRow);
-        var ledBlock = buildFunctionBlock('🔦 ' + _('LED'), 'led', data, [_('ON'), _('OFF')]);
-        var wifiBlock = buildFunctionBlock('📶 ' + _('WiFi'), 'wifi', data, [_('ON'), _('OFF')]);
+        var ledBlock = buildFunctionBlock('🔦 LED', 'led', data, ['开', '关']);
+        var wifiBlock = buildFunctionBlock('📶 WiFi', 'wifi', data, ['开', '关']);
         ledBlock.className += ' combined-feature hidden-control-source';
         wifiBlock.className += ' combined-feature hidden-control-source';
         combined.appendChild(ledBlock);
@@ -544,7 +544,7 @@
             var allSaveButtons = document.querySelectorAll('.btn-save');
             for (var b = 0; b < allSaveButtons.length; b++) allSaveButtons[b].disabled = true;
             var origText = button.textContent;
-            button.textContent = _('Saving...');
+            button.textContent = '正在保存…';
 
             var postData = { action: action };
             postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
@@ -568,13 +568,13 @@
             post(postData, function(resp) {
                 for (var b = 0; b < allSaveButtons.length; b++) allSaveButtons[b].disabled = false;
                 if (resp.success) {
-                    button.textContent = _('Saved');
+                    button.textContent = '已保存';
                     setTimeout(function() { button.textContent = origText; }, 1500);
                     syncControlsFromPost(postData);
                     if (resp.proxy_status) renderProxyStatus(resp.proxy_status);
                 } else {
-                    showError(resp.error || _('Unknown error'));
-                    button.textContent = _('Save failed');
+                    showError(resp.error || '未知错误');
+                    button.textContent = '保存失败';
                     setTimeout(function() { button.textContent = origText; }, 3000);
                 }
             });
@@ -621,7 +621,7 @@
     return view.extend({
         render: function() {
             if (!document.getElementById('toggle-page-style')) {
-                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=78' });
+                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=79' });
                 document.head.appendChild(link);
             }
             var root = create('div', {}, [

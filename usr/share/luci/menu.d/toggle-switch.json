@@ -1,6 +1,6 @@
 {
     "admin/system/toggle": {
-        "title": "Toggle Switch",
+        "title": "拨杆控制",
         "order": 60,
         "action": {
             "type": "view",
