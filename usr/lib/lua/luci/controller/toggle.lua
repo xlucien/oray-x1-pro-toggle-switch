@@ -37,6 +37,23 @@ local function proxy_status(target)
     return result
 end
 
+local function valid_reset_action(value)
+    local valid = { wifi=true, led=true, reboot=true }
+    return valid[value] and value or "wifi"
+end
+
+local function reset_status()
+    local f = io.open("/tmp/x1pro-reset/last", "r")
+    local result = { gesture = "none", action = "none", result = "none", time = "" }
+    if not f then return result end
+    for line in f:lines() do
+        local key, value = line:match("^([a-z_]+)=(.*)$")
+        if key and result[key] ~= nil then result[key] = value end
+    end
+    f:close()
+    return result
+end
+
 local function physical_state()
     local f = io.open("/tmp/x1pro-toggle-state", "r")
     if not f then return "0" end
@@ -88,6 +105,13 @@ function api()
             proxy_left_action = cfg_get("proxy_high_action", "0") == "1",
             proxy_right_action = cfg_get("proxy_low_action", "1") == "1",
             proxy_status = proxy,
+            reset_single_enabled = cfg_get("reset_single_enabled", "0") == "1",
+            reset_single_action = cfg_get("reset_single_action", "wifi"),
+            reset_double_enabled = cfg_get("reset_double_enabled", "0") == "1",
+            reset_double_action = cfg_get("reset_double_action", "led"),
+            reset_triple_enabled = cfg_get("reset_triple_enabled", "1") == "1",
+            reset_triple_action = cfg_get("reset_triple_action", "reboot"),
+            reset_status = reset_status(),
             passwall_enabled = cfg_get("passwall_enabled", "0") == "1",
             passwall_left_action = cfg_get("passwall_high_action", "1") == "1",
             passwall_right_action = cfg_get("passwall_low_action", "0") == "1",
@@ -129,6 +153,9 @@ function api()
             proxy_enabled = "proxy_enabled",
             proxy_left_action = "proxy_high_action",
             proxy_right_action = "proxy_low_action",
+            reset_single_enabled = "reset_single_enabled",
+            reset_double_enabled = "reset_double_enabled",
+            reset_triple_enabled = "reset_triple_enabled",
             passwall_enabled = "passwall_enabled",
             passwall_left_action = "passwall_high_action",
             passwall_right_action = "passwall_low_action",
@@ -143,7 +170,12 @@ function api()
             cfg_set_bool(uci_key, http.formvalue(form_key) or "0")
         end
         os.execute(string.format("uci -q set x1pro-toggle.main.proxy_target='%s'", new_proxy_target))
+        for _, gesture in ipairs({"single", "double", "triple"}) do
+            local action = valid_reset_action(http.formvalue("reset_" .. gesture .. "_action") or "wifi")
+            os.execute(string.format("uci -q set x1pro-toggle.main.reset_%s_action='%s'", gesture, action))
+        end
         os.execute("uci -q commit x1pro-toggle")
+        os.execute("/usr/sbin/x1pro-reset-control clear >/dev/null 2>&1")
         if old_wifi_enabled == "1" and new_wifi_enabled == "0" then
             os.execute("/usr/sbin/x1pro-toggle-wifi restore >/dev/null 2>&1")
         end

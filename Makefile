@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
-PKG_VERSION:=1.2.0
+PKG_VERSION:=1.3.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
@@ -42,6 +42,9 @@ define Package/toggle-switch/install
 	$(INSTALL_BIN) ./usr/sbin/x1pro-toggle-sync $(1)/usr/sbin/x1pro-toggle-sync
 	$(INSTALL_BIN) ./usr/sbin/x1pro-toggle-wifi $(1)/usr/sbin/x1pro-toggle-wifi
 	$(INSTALL_BIN) ./usr/sbin/x1pro-toggle-proxy $(1)/usr/sbin/x1pro-toggle-proxy
+	$(INSTALL_BIN) ./usr/sbin/x1pro-reset-control $(1)/usr/sbin/x1pro-reset-control
+	$(INSTALL_DIR) $(1)/usr/libexec
+	$(INSTALL_BIN) ./usr/libexec/x1pro-reset-button $(1)/usr/libexec/x1pro-reset-button
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller $(1)/usr/lib/lua/luci/view/toggle
 	$(INSTALL_DATA) ./usr/lib/lua/luci/controller/toggle.lua $(1)/usr/lib/lua/luci/controller/toggle.lua
 	$(INSTALL_DATA) ./usr/lib/lua/luci/view/toggle/index.htm $(1)/usr/lib/lua/luci/view/toggle/index.htm
@@ -54,7 +57,25 @@ define Package/toggle-switch/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/x1pro-toggle enable
+	uci -q get x1pro-toggle.main.reset_single_enabled >/dev/null || uci set x1pro-toggle.main.reset_single_enabled='0'
+	uci -q get x1pro-toggle.main.reset_single_action >/dev/null || uci set x1pro-toggle.main.reset_single_action='wifi'
+	uci -q get x1pro-toggle.main.reset_double_enabled >/dev/null || uci set x1pro-toggle.main.reset_double_enabled='0'
+	uci -q get x1pro-toggle.main.reset_double_action >/dev/null || uci set x1pro-toggle.main.reset_double_action='led'
+	uci -q get x1pro-toggle.main.reset_triple_enabled >/dev/null || uci set x1pro-toggle.main.reset_triple_enabled='1'
+	uci -q get x1pro-toggle.main.reset_triple_action >/dev/null || uci set x1pro-toggle.main.reset_triple_action='reboot'
+	uci -q commit x1pro-toggle
+	[ -e /etc/rc.button/reset.x1pro-stock ] || cp /etc/rc.button/reset /etc/rc.button/reset.x1pro-stock
+	cp /usr/libexec/x1pro-reset-button /etc/rc.button/reset
+	chmod 0755 /etc/rc.button/reset
 	rm -f /tmp/luci-indexcache
+}
+exit 0
+endef
+
+define Package/toggle-switch/prerm
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	[ ! -e /etc/rc.button/reset.x1pro-stock ] || cp /etc/rc.button/reset.x1pro-stock /etc/rc.button/reset
 }
 exit 0
 endef

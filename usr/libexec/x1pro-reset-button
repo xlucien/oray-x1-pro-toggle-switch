@@ -1,0 +1,16 @@
+#!/bin/sh
+
+case "$ACTION" in
+	pressed)
+		/usr/sbin/x1pro-reset-control pressed
+		return 5
+		;;
+	timeout)
+		exec /usr/sbin/x1pro-reset-control timeout
+		;;
+	released)
+		exec /usr/sbin/x1pro-reset-control released "${SEEN:-0}"
+		;;
+esac
+
+return 0

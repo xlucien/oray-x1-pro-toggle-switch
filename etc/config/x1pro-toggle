@@ -22,6 +22,14 @@ config x1pro_toggle 'main'
 	option proxy_high_action '0'
 	option proxy_low_action '1'
 
+	# RESET multi-click control is independent from global_enabled.
+	option reset_single_enabled '0'
+	option reset_single_action 'wifi'
+	option reset_double_enabled '0'
+	option reset_double_action 'led'
+	option reset_triple_enabled '1'
+	option reset_triple_action 'reboot'
+
 	option passwall_enabled '0'
 	option passwall_high_action '1'
 	option passwall_low_action '0'

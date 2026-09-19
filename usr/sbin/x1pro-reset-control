@@ -1,0 +1,171 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+TAG='x1pro-reset'
+STATE_DIR='/tmp/x1pro-reset'
+LOCK_DIR='/tmp/x1pro-reset.lock'
+
+delay_short() { lua -e 'require("nixio").nanosleep(0,50000000)' 2>/dev/null; }
+delay_window() { lua -e 'require("nixio").nanosleep(1,200000000)' 2>/dev/null; }
+delay_pressed() { lua -e 'require("nixio").nanosleep(0,200000000)' 2>/dev/null; }
+
+lock() {
+	local tries=0
+	while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+		tries=$((tries + 1)); [ "$tries" -lt 50 ] || return 1; delay_short
+	done
+}
+unlock() { rmdir "$LOCK_DIR" 2>/dev/null; }
+
+clear_pending() {
+	mkdir -p "$STATE_DIR"
+	lock || return 1
+	GEN="$(cat "$STATE_DIR/generation" 2>/dev/null)"; GEN=$((${GEN:-0} + 1))
+	echo "$GEN" > "$STATE_DIR/generation"
+	rm -f "$STATE_DIR/count" "$STATE_DIR/pressed" "$STATE_DIR/long"
+	unlock
+}
+
+record_result() {
+	printf 'gesture=%s\naction=%s\nresult=%s\ntime=%s\n' "$1" "$2" "$3" "$(date '+%Y-%m-%d %H:%M:%S')" > "$STATE_DIR/last"
+}
+
+wifi_snapshot() {
+	uci -q delete x1pro-toggle.reset_wifi_state
+	uci -q set x1pro-toggle.reset_wifi_state='wifi_state'
+	config_load wireless
+	reset_save_radio() {
+		local section="$1" disabled
+		config_get disabled "$section" disabled '0'
+		uci -q add_list "x1pro-toggle.reset_wifi_state.radio=${section}=${disabled}"
+	}
+	config_foreach reset_save_radio wifi-device
+	uci -q commit x1pro-toggle
+}
+
+wifi_off() {
+	config_load wireless
+	reset_disable_radio() { uci -q set "wireless.$1.disabled=1"; }
+	config_foreach reset_disable_radio wifi-device
+	uci -q commit wireless
+	wifi reload >/dev/null 2>&1
+}
+
+wifi_restore() {
+	local entry section disabled found=0
+	config_load x1pro-toggle
+	reset_restore_radio() {
+		entry="$1"; section="${entry%%=*}"; disabled="${entry#*=}"
+		[ -n "$section" ] || return
+		uci -q set "wireless.${section}.disabled=${disabled:-0}" && found=1
+	}
+	config_list_foreach reset_wifi_state radio reset_restore_radio
+	[ "$found" -eq 1 ] || return 1
+	uci -q commit wireless
+	wifi reload >/dev/null 2>&1
+}
+
+wifi_toggle() {
+	local any_enabled=0
+	config_load wireless
+	reset_check_radio() {
+		local disabled
+		config_get disabled "$1" disabled '0'
+		[ "$disabled" = 1 ] || any_enabled=1
+	}
+	config_foreach reset_check_radio wifi-device
+	if [ "$any_enabled" -eq 1 ]; then
+		wifi_snapshot; wifi_off; echo wifi_off
+	elif wifi_restore; then
+		echo wifi_restored
+	else
+		echo no_wifi_snapshot; return 1
+	fi
+}
+
+led_toggle() {
+	local name path value max
+	name="$(uci -q get x1pro-toggle.main.led_name)"; [ -n "$name" ] || name='white:status'
+	path="/sys/class/leds/$name"
+	[ -r "$path/brightness" ] && [ -w "$path/brightness" ] || return 1
+	read -r value < "$path/brightness"
+	[ -w "$path/trigger" ] && echo none > "$path/trigger"
+	if [ "${value:-0}" -gt 0 ]; then echo 0 > "$path/brightness"; echo led_off
+	else read -r max < "$path/max_brightness"; echo "${max:-1}" > "$path/brightness"; echo led_on
+	fi
+}
+
+run_action() {
+	local gesture="$1" enabled action result
+	enabled="$(uci -q get x1pro-toggle.main.reset_${gesture}_enabled)"
+	action="$(uci -q get x1pro-toggle.main.reset_${gesture}_action)"
+	[ "$enabled" = 1 ] || { record_result "$gesture" "${action:-none}" disabled; logger -t "$TAG" "$gesture disabled"; return; }
+	case "$action" in
+		wifi) result="$(wifi_toggle)"; RC=$? ;;
+		led) result="$(led_toggle)"; RC=$? ;;
+		reboot)
+			record_result "$gesture" reboot executing
+			logger -t "$TAG" "$gesture: reboot"
+			sync; reboot; return ;;
+		*) result=invalid_action; RC=1 ;;
+	esac
+	[ "$RC" -eq 0 ] || result="${result:-failed}"
+	record_result "$gesture" "$action" "$result"
+	logger -t "$TAG" "$gesture: $action ($result)"
+}
+
+case "$1" in
+	pressed)
+		mkdir -p "$STATE_DIR"
+		touch "$STATE_DIR/pressed"
+		rm -f "$STATE_DIR/long"
+		;;
+	timeout)
+		mkdir -p "$STATE_DIR"
+		touch "$STATE_DIR/long"
+		clear_pending
+		touch "$STATE_DIR/long"
+		. /etc/diag.sh
+		set_state failsafe
+		logger -t "$TAG" 'long press timeout reached'
+		;;
+	released)
+		SEEN="${2:-0}"
+		rm -f "$STATE_DIR/pressed"
+		if [ "$SEEN" -ge 5 ] || [ -e "$STATE_DIR/long" ]; then
+			clear_pending
+			record_result long factory_reset executing
+			logger -t "$TAG" 'long press: factory reset'
+			factoryreset -y && reboot &
+			exit 0
+		fi
+		lock || exit 1
+		COUNT="$(cat "$STATE_DIR/count" 2>/dev/null)"; COUNT=$((${COUNT:-0} + 1))
+		GEN="$(cat "$STATE_DIR/generation" 2>/dev/null)"; GEN=$((${GEN:-0} + 1))
+		echo "$COUNT" > "$STATE_DIR/count"; echo "$GEN" > "$STATE_DIR/generation"
+		unlock
+		"$0" worker "$GEN" >/dev/null 2>&1 &
+		;;
+	worker)
+		MY_GEN="$2"; delay_window
+		while [ -e "$STATE_DIR/pressed" ]; do
+			[ -e "$STATE_DIR/long" ] && exit 0
+			delay_pressed
+		done
+		lock || exit 1
+		GEN="$(cat "$STATE_DIR/generation" 2>/dev/null)"
+		[ "$GEN" = "$MY_GEN" ] || { unlock; exit 0; }
+		COUNT="$(cat "$STATE_DIR/count" 2>/dev/null)"
+		rm -f "$STATE_DIR/count"; unlock
+		case "$COUNT" in
+			1) run_action single ;;
+			2) run_action double ;;
+			3) run_action triple ;;
+			*) record_result "${COUNT:-0}_clicks" none unsupported; logger -t "$TAG" "unsupported click count: ${COUNT:-0}" ;;
+		esac
+		;;
+	clear) clear_pending ;;
+	status) cat "$STATE_DIR/last" 2>/dev/null ;;
+	*) exit 2 ;;
+esac

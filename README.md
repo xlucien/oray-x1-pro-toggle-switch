@@ -21,6 +21,12 @@ LuCI 的“代理控制”选项卡支持自动检测、PassWall、OpenClash、S
 
 检测只在打开页面、点击“重新检测”或拨杆状态变化时执行，没有常驻轮询。状态分为未安装、已安装未启用、正在运行、配置已启用但启动异常和多代理冲突。脚本只修改所选代理自身的启用项并调用其 init 服务，不改动通用 network、wireless 配置。
 
+## RESET 多击控制
+
+RESET 控制独立于 GPIO0 拨杆的总开关。连击窗口为 1200 毫秒，单击与双击默认关闭，三击默认执行重启；长按 5 秒始终保留系统恢复出厂功能。单击、双击、三击均可分别启用并选择切换 WiFi、切换灯光或重启。四击及以上只记录日志，不执行动作。
+
+RESET 的 WiFi 切换使用独立的 `reset_wifi_state` 快照：关闭前保存各 radio 状态，再次切换时恢复；没有快照时不会强制打开全部 radio。安装会把原始脚本备份为 `/etc/rc.button/reset.x1pro-stock`。保存 LuCI 配置会清除尚未结算的连击，长按达到 5 秒也会取消全部短按动作。
+
 ## 结论
 
 本方案不运行轮询守护进程。GPIO0 在 DTS 中注册为 `gpio-keys` 的 `EV_SW`，由内核监听上升沿和下降沿；状态改变时，`gpio-button-hotplug` 产生 `pressed`/`released` 事件，procd 根据 `/etc/hotplug.json` 调用 `/etc/rc.button/BTN_0`。
@@ -85,6 +91,9 @@ debugfs 将该引脚显示为 `gpio-512`，这是控制器全局基址 512 加�
 /usr/sbin/x1pro-toggle-apply
 /usr/sbin/x1pro-toggle-sync
 /usr/sbin/x1pro-toggle-proxy
+/usr/sbin/x1pro-reset-control
+/usr/libexec/x1pro-reset-button
+/etc/rc.button/reset.x1pro-stock
 ```
 
 把本目录上传到路由器，例如 `/tmp/x1pro-gpio0-toggle`，然后：

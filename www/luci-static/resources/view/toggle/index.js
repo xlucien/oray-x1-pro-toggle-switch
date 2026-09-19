@@ -4,6 +4,7 @@
     var apiUrl = '/cgi-bin/luci/admin/system/toggle/api';
     var app, saveBtn, statusText, errorDiv, globalSwitch;
     var proxyEnable, proxyTarget, proxyStatusText, proxyDetectBtn;
+    var resetControls = {};
     var statusInterval = null;
 
     var controls = {};
@@ -287,8 +288,55 @@
     function activateTab(name) {
         var buttons = document.querySelectorAll('.tab-button');
         var panes = document.querySelectorAll('.tab-pane');
-        for (var i = 0; i < buttons.length; i++) buttons[i].classList.toggle('active', buttons[i].getAttribute('data-tab') === name);
+        for (var i = 0; i < buttons.length; i++) buttons[i].classList.toggle('active', buttons[i].getAttribute('data-toggle-pane') === name);
         for (var j = 0; j < panes.length; j++) panes[j].classList.toggle('active', panes[j].id === name + '-pane');
+    }
+
+    function resetActionLabel(value) {
+        return { wifi: '切换 WiFi', led: '切换灯光', reboot: '重启' }[value] || value;
+    }
+
+    function buildResetActionRow(gesture, title, data) {
+        var row = create('div', { 'class': 'reset-action-row' });
+        var head = create('div', { 'class': 'reset-action-head' });
+        head.appendChild(create('strong', { 'text': title }));
+        var enabled = create('input', { 'type': 'checkbox', 'checked': data['reset_' + gesture + '_enabled'] === true });
+        head.appendChild(create('label', { 'class': 'toggle-switch' }, [enabled, create('span', { 'class': 'toggle-slider' })]));
+        row.appendChild(head);
+        var select = create('select', { 'class': 'proxy-select' });
+        [['wifi', '切换 WiFi'], ['led', '切换灯光'], ['reboot', '重启']].forEach(function(item) {
+            var option = create('option', { 'value': item[0], 'text': item[1] });
+            if (data['reset_' + gesture + '_action'] === item[0]) option.selected = true;
+            select.appendChild(option);
+        });
+        row.appendChild(select);
+        resetControls[gesture] = { enabled: enabled, action: select };
+        return row;
+    }
+
+    function buildResetPane(data) {
+        var pane = create('div', { 'class': 'tab-pane', 'id': 'reset-pane' });
+        var card = create('div', { 'class': 'proxy-card reset-card' });
+        card.appendChild(create('div', { 'class': 'func-title', 'text': '⏻ RESET 控制' }));
+        card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 按键控制独立运行，不受总开关影响。连击判定时间为 1200 毫秒。' }));
+        card.appendChild(buildResetActionRow('single', '单击', data));
+        card.appendChild(buildResetActionRow('double', '双击', data));
+        card.appendChild(buildResetActionRow('triple', '三击', data));
+
+        var longRow = create('div', { 'class': 'reset-long-row' });
+        longRow.appendChild(create('strong', { 'text': '长按 5 秒' }));
+        longRow.appendChild(create('span', { 'class': 'reset-protected', 'text': '始终启用 · 恢复出厂设置' }));
+        card.appendChild(longRow);
+
+        var recent = data.reset_status || {};
+        var recentText = '最近动作：暂无';
+        if (recent.gesture && recent.gesture !== 'none') {
+            recentText = '最近动作：' + recent.gesture + ' · ' + resetActionLabel(recent.action) + ' · ' + recent.result;
+            if (recent.time) recentText += ' · ' + recent.time;
+        }
+        card.appendChild(create('div', { 'class': 'reset-recent', 'text': recentText }));
+        pane.appendChild(card);
+        return pane;
     }
 
     function syncControlsFromData(data) {
@@ -362,11 +410,13 @@
         app.appendChild(globalBox);
 
         var tabs = create('div', { 'class': 'tabs' });
-        var basicTab = create('button', { 'class': 'tab-button active', 'data-tab': 'basic', 'text': '基本设置' });
-        var proxyTab = create('button', { 'class': 'tab-button', 'data-tab': 'proxy', 'text': '代理控制' });
+        var basicTab = create('button', { 'class': 'tab-button active', 'data-toggle-pane': 'basic', 'text': '基本设置' });
+        var proxyTab = create('button', { 'class': 'tab-button', 'data-toggle-pane': 'proxy', 'text': '代理控制' });
+        var resetTab = create('button', { 'class': 'tab-button', 'data-toggle-pane': 'reset', 'text': 'RESET 控制' });
         basicTab.addEventListener('click', function() { activateTab('basic'); });
         proxyTab.addEventListener('click', function() { activateTab('proxy'); });
-        tabs.appendChild(basicTab); tabs.appendChild(proxyTab); app.appendChild(tabs);
+        resetTab.addEventListener('click', function() { activateTab('reset'); });
+        tabs.appendChild(basicTab); tabs.appendChild(proxyTab); tabs.appendChild(resetTab); app.appendChild(tabs);
 
         var basicPane = create('div', { 'class': 'tab-pane active', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box' });
@@ -384,6 +434,7 @@
         basicPane.appendChild(gridBox);
         app.appendChild(basicPane);
         app.appendChild(buildProxyPane(data));
+        app.appendChild(buildResetPane(data));
 
         var btnBox = create('div', { 'class': 'btn-box' });
         saveBtn = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
@@ -399,6 +450,10 @@
             postData['proxy_target'] = proxyTarget.value;
             postData['proxy_left_action'] = '0';
             postData['proxy_right_action'] = '1';
+            ['single', 'double', 'triple'].forEach(function(gesture) {
+                postData['reset_' + gesture + '_enabled'] = resetControls[gesture].enabled.checked ? '1' : '0';
+                postData['reset_' + gesture + '_action'] = resetControls[gesture].action.value;
+            });
             for (var prefix in controls) {
                 if (controls.hasOwnProperty(prefix)) {
                     var group = controls[prefix];
