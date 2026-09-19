@@ -134,11 +134,18 @@ function api()
 
     if method == "POST" and http.formvalue("action") == "save" then
         local old_wifi_enabled = cfg_get("wifi_enabled", "0")
+        local new_led_enabled = http.formvalue("led_enabled") == "1" and "1" or "0"
         local new_wifi_enabled = http.formvalue("wifi_enabled") == "1" and "1" or "0"
         local old_proxy_enabled = cfg_get("proxy_enabled", "0")
         local old_proxy_target = cfg_get("proxy_target", "auto")
         local new_proxy_enabled = http.formvalue("proxy_enabled") == "1" and "1" or "0"
         local new_proxy_target = valid_proxy_target(http.formvalue("proxy_target") or "auto")
+        local enabled_count = (new_led_enabled == "1" and 1 or 0) +
+            (new_wifi_enabled == "1" and 1 or 0) + (new_proxy_enabled == "1" and 1 or 0)
+        if enabled_count > 1 then
+            json_out({ success = false, error = "LED, WiFi and proxy control are mutually exclusive" }, 400)
+            return
+        end
         if old_wifi_enabled == "0" and new_wifi_enabled == "1" then
             os.execute("/usr/sbin/x1pro-toggle-wifi snapshot >/dev/null 2>&1")
         end

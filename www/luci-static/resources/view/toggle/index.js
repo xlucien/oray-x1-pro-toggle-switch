@@ -8,7 +8,6 @@
     var statusInterval = null;
 
     var controls = {};
-    var proxyPrefixes = ['passwall', 'openclash', 'ssr'];
 
     function $(sel) { return document.querySelector(sel); }
 
@@ -95,20 +94,17 @@
         statusText.textContent = _('Current switch position:') + ' ' + txt;
     }
 
-    // ===== 代理项目之间互斥，LED 完全独立 =====
+    function enableOnlyFeature(active) {
+        if (active !== 'led' && controls.led) controls.led.enabled.checked = false;
+        if (active !== 'wifi' && controls.wifi) controls.wifi.enabled.checked = false;
+        if (active !== 'proxy' && proxyEnable) proxyEnable.checked = false;
+    }
+
+    // LED、WiFi、代理控制三者互斥；旧配置冲突时按代理、WiFi、LED保留一个。
     function applyMutexRules() {
-        var enabledProxies = [];
-        proxyPrefixes.forEach(function(prefix) {
-            if (controls[prefix] && controls[prefix].enabled.checked) {
-                enabledProxies.push(prefix);
-            }
-        });
-        if (enabledProxies.length > 1) {
-            var keep = enabledProxies[0];
-            for (var i = 1; i < enabledProxies.length; i++) {
-                controls[enabledProxies[i]].enabled.checked = false;
-            }
-        }
+        if (proxyEnable && proxyEnable.checked) enableOnlyFeature('proxy');
+        else if (controls.wifi && controls.wifi.enabled.checked) enableOnlyFeature('wifi');
+        else if (controls.led && controls.led.enabled.checked) enableOnlyFeature('led');
     }
 
     // ===== 左右互斥：左右不能同时相同 =====
@@ -176,24 +172,9 @@
 
         setupOppositeMutex(prefix);
 
-        if (prefix === 'led' || prefix === 'wifi') {
-            // LED 与 WiFi 完全独立，不关联任何代理项目
-            inputEnable.addEventListener('change', function() {
-                // LED 开关变化时，不做任何代理项目的自动操作
-            });
-        } else {
-            // 代理项目：开启时只互斥其他代理，不关联 LED
-            inputEnable.addEventListener('change', function() {
-                var currentChecked = inputEnable.checked;
-                if (currentChecked) {
-                    proxyPrefixes.forEach(function(p) {
-                        if (p !== prefix && controls[p]) {
-                            controls[p].enabled.checked = false;
-                        }
-                    });
-                }
-            });
-        }
+        inputEnable.addEventListener('change', function() {
+            if (inputEnable.checked) enableOnlyFeature(prefix);
+        });
 
         return block;
     }
@@ -243,6 +224,9 @@
         var enableRow = create('div', { 'class': 'toggle-item proxy-row' });
         enableRow.appendChild(create('span', { 'class': 'toggle-label', 'text': '启用代理拨杆控制' }));
         proxyEnable = create('input', { 'type': 'checkbox', 'checked': data.proxy_enabled === true });
+        proxyEnable.addEventListener('change', function() {
+            if (proxyEnable.checked) enableOnlyFeature('proxy');
+        });
         enableRow.appendChild(create('label', { 'class': 'toggle-switch' }, [proxyEnable, create('span', { 'class': 'toggle-slider' })]));
         card.appendChild(enableRow);
 
@@ -402,7 +386,7 @@
         globalBox.appendChild(rowGlobal);
         app.appendChild(globalBox);
 
-        app.appendChild(create('div', { 'class': 'group-heading', 'text': 'GPIO0 拨杆控制（受总开关控制）' }));
+        app.appendChild(create('div', { 'class': 'group-heading', 'text': 'GPIO0 拨杆控制（LED / WiFi / 代理三选一）' }));
         var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box' });
 
