@@ -182,6 +182,7 @@
     border-radius: 6px;
     color: #444;
 }
+.select-wrap.is-disabled { opacity: .45; }
 .proxy-action .section-label { margin-top: 0; }
 .proxy-action-hint {
     margin: -2px 0 12px;

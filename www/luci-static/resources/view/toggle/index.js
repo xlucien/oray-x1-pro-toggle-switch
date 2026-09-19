@@ -294,7 +294,7 @@
     }
 
     function resetActionLabel(value) {
-        return { wifi: '切换 WiFi', led: '切换灯光', reboot: '重启' }[value] || value;
+        return { wifi: '切换 WiFi', led: '切换灯光', reboot: '重启设备', factory_reset: '恢复出厂设置' }[value] || value;
     }
 
     function buildResetActionRow(gesture, title, data) {
@@ -305,12 +305,19 @@
         head.appendChild(create('label', { 'class': 'toggle-switch' }, [enabled, create('span', { 'class': 'toggle-slider' })]));
         row.appendChild(head);
         var select = create('select', { 'class': 'proxy-select' });
-        [['wifi', '切换 WiFi'], ['led', '切换灯光'], ['reboot', '重启']].forEach(function(item) {
+        [['wifi', '切换 WiFi'], ['led', '切换灯光'], ['reboot', '重启设备']].forEach(function(item) {
             var option = create('option', { 'value': item[0], 'text': item[1] });
             if (data['reset_' + gesture + '_action'] === item[0]) option.selected = true;
             select.appendChild(option);
         });
-        row.appendChild(wrapSelect(select));
+        var selectBox = wrapSelect(select);
+        row.appendChild(selectBox);
+        function updateAvailability() {
+            select.disabled = !enabled.checked;
+            selectBox.classList.toggle('is-disabled', !enabled.checked);
+        }
+        enabled.addEventListener('change', updateAvailability);
+        updateAvailability();
         resetControls[gesture] = { enabled: enabled, action: select };
         return row;
     }
@@ -318,21 +325,27 @@
     function buildResetPane(data) {
         var pane = create('div', { 'class': 'control-section', 'id': 'reset-pane' });
         var card = create('div', { 'class': 'proxy-card reset-card' });
-        card.appendChild(create('div', { 'class': 'func-title', 'text': '⏻ RESET 控制' }));
-        card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 按键控制独立运行，不受总开关影响。连击判定时间为 1200 毫秒。' }));
+        card.appendChild(create('div', { 'class': 'func-title', 'text': '按键设置' }));
+        card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 按键独立运行，不受拨杆控制开关影响。连续点击间隔为 1.2 秒；单击、双击和三击默认关闭。' }));
         card.appendChild(buildResetActionRow('single', '单击', data));
         card.appendChild(buildResetActionRow('double', '双击', data));
         card.appendChild(buildResetActionRow('triple', '三击', data));
 
         var longRow = create('div', { 'class': 'reset-long-row' });
         longRow.appendChild(create('strong', { 'text': '长按 5 秒' }));
-        longRow.appendChild(create('span', { 'class': 'reset-protected', 'text': '始终启用 · 恢复出厂设置' }));
+        longRow.appendChild(create('span', { 'class': 'reset-protected', 'text': '恢复出厂设置（始终启用）' }));
         card.appendChild(longRow);
 
         var recent = data.reset_status || {};
         var recentText = '最近动作：暂无';
         if (recent.gesture && recent.gesture !== 'none') {
-            recentText = '最近动作：' + recent.gesture + ' · ' + resetActionLabel(recent.action) + ' · ' + recent.result;
+            var gestureText = { single: '单击', double: '双击', triple: '三击', long: '长按' }[recent.gesture] || recent.gesture;
+            var resultText = {
+                disabled: '未启用', led_on: '灯光已打开', led_off: '灯光已关闭',
+                wifi_off: 'WiFi 已关闭', wifi_restored: 'WiFi 已恢复',
+                no_wifi_snapshot: '没有可恢复的 WiFi 状态', executing: '执行中', unsupported: '不支持'
+            }[recent.result] || recent.result;
+            recentText = '最近动作：' + gestureText + ' · ' + resetActionLabel(recent.action) + ' · ' + resultText;
             if (recent.time) recentText += ' · ' + recent.time;
         }
         card.appendChild(create('div', { 'class': 'reset-recent', 'text': recentText }));
@@ -520,17 +533,16 @@
         gridBox.appendChild(proxyPane);
         basicPane.appendChild(gridBox);
         paddlePage.appendChild(basicPane);
-        resetPage.appendChild(create('div', { 'class': 'group-heading reset-heading', 'text': 'RESET 按键控制（独立运行）' }));
         resetPage.appendChild(buildResetPane(data));
 
-        function saveAll(button) {
+        function saveAll(button, action) {
             hideError();
             var allSaveButtons = document.querySelectorAll('.btn-save');
             for (var b = 0; b < allSaveButtons.length; b++) allSaveButtons[b].disabled = true;
             var origText = button.textContent;
             button.textContent = _('Saving...');
 
-            var postData = { action: 'save' };
+            var postData = { action: action };
             postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
             postData['proxy_enabled'] = proxyEnable.checked ? '1' : '0';
             postData['proxy_target'] = proxyTarget.value;
@@ -563,14 +575,14 @@
                 }
             });
         }
-        function addSaveButton(page) {
+        function addSaveButton(page, action, label) {
             var btnBox = create('div', { 'class': 'btn-box' });
-            var button = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
-            button.addEventListener('click', function() { saveAll(button); });
+            var button = create('button', { 'class': 'btn-save', 'text': label });
+            button.addEventListener('click', function() { saveAll(button, action); });
             btnBox.appendChild(button); page.appendChild(btnBox);
         }
-        addSaveButton(paddlePage);
-        addSaveButton(resetPage);
+        addSaveButton(paddlePage, 'save', '保存并应用');
+        addSaveButton(resetPage, 'save_only', '保存');
 
         syncControlsFromData(data);
         statusInterval = setInterval(fetchMode, 2000);
