@@ -310,14 +310,7 @@
             if (data['reset_' + gesture + '_action'] === item[0]) option.selected = true;
             select.appendChild(option);
         });
-        var selectBox = wrapSelect(select);
-        row.appendChild(selectBox);
-        function updateAvailability() {
-            select.disabled = !enabled.checked;
-            selectBox.classList.toggle('is-disabled', !enabled.checked);
-        }
-        enabled.addEventListener('change', updateAvailability);
-        updateAvailability();
+        row.appendChild(wrapSelect(select));
         resetControls[gesture] = { enabled: enabled, action: select };
         return row;
     }
@@ -425,12 +418,10 @@
         resetTab.addEventListener('click', function() { selectPage('reset'); });
 
         var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
-        statusText = create('div', { 'class': 'current-mode', 'text': '当前拨杆位置：' + modeTxt });
-        paddlePage.appendChild(statusText);
-
-        var globalBox = create('div', { 'class': 'global-box' });
-        var rowGlobal = create('div', { 'class': 'toggle-item' });
-        var labelGlobal = create('span', { 'class': 'toggle-label', 'text': '启用拨杆控制' });
+        var modeBar = create('div', { 'class': 'current-mode' });
+        statusText = create('span', { 'class': 'mode-position', 'text': '当前拨杆位置：' + modeTxt });
+        var rowGlobal = create('div', { 'class': 'mode-global' });
+        var labelGlobal = create('span', { 'text': '启用拨杆控制' });
         globalSwitch = create('input', { 'type': 'checkbox', 'checked': data.global_enabled === true });
         var switchLabel = create('label', { 'class': 'toggle-switch' }, [
             globalSwitch,
@@ -438,8 +429,9 @@
         ]);
         rowGlobal.appendChild(labelGlobal);
         rowGlobal.appendChild(switchLabel);
-        globalBox.appendChild(rowGlobal);
-        paddlePage.appendChild(globalBox);
+        modeBar.appendChild(statusText);
+        modeBar.appendChild(rowGlobal);
+        paddlePage.appendChild(modeBar);
 
         var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box function-proxy-grid' });
