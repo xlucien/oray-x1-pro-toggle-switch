@@ -189,8 +189,6 @@ function api()
         end
         if new_proxy_enabled == "1" and (old_proxy_enabled == "0" or old_proxy_target ~= new_proxy_target) then
             os.execute("/usr/sbin/x1pro-toggle-proxy snapshot >/dev/null 2>&1")
-        elseif old_proxy_enabled == "1" and new_proxy_enabled == "0" then
-            os.execute("/usr/sbin/x1pro-toggle-proxy restore >/dev/null 2>&1")
         end
         if requested_action == "save" then
             apply_current_state()
