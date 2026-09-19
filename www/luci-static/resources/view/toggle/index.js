@@ -1,12 +1,358 @@
-(function(){'use strict';
-var api='/cgi-bin/luci/admin/system/toggle/api', app=document.getElementById('toggle-app');
-var groups=[['led','LED','ON','OFF'],['wifi','WiFi','ON','OFF'],['passwall','PassWall','Enable','Disable'],['openclash','OpenClash','Enable','Disable'],['ssr','SSR Plus','Enable','Disable']];
-function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function request(method,data,cb){var x=new XMLHttpRequest(),body='';if(data){if(typeof csrf_token!=='undefined')data.token=csrf_token;body=Object.keys(data).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(data[k])}).join('&')}x.open(method,api+'?_='+Date.now(),true);if(method==='POST')x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');x.onload=function(){try{cb(JSON.parse(x.responseText))}catch(e){cb({success:false,error:'Invalid response'})}};x.onerror=function(){cb({success:false,error:'Network error'})};x.send(body)}
-function radio(prefix,side,on,a,b){var n=prefix+'_'+side+'_action';return '<div class="ts-row ts-actions"><span>'+esc(side==='left'?'Left':'Right')+'</span><span><label><input type="radio" name="'+n+'" value="1" '+(on?'checked':'')+'> '+esc(a)+'</label><label><input type="radio" name="'+n+'" value="0" '+(!on?'checked':'')+'> '+esc(b)+'</label></span></div>'}
-function render(d){var h='<div class="ts-status" id="ts-mode">Current switch position: '+(String(d.current_mode)==='1'?'Right':'Left')+'</div><div class="ts-global"><label><input id="global_enabled" type="checkbox" '+(d.global_enabled?'checked':'')+'> Global Enable</label><div class="ts-note">GPIO0 interrupt mode; no polling daemon.</div></div><div class="ts-grid">';groups.forEach(function(g){var p=g[0];h+='<div class="ts-card"><h3>'+esc(g[1])+'</h3><label><input id="'+p+'_enabled" type="checkbox" '+(d[p+'_enabled']?'checked':'')+'> Enable</label>'+radio(p,'left',d[p+'_left_action'],g[2],g[3])+radio(p,'right',d[p+'_right_action'],g[2],g[3])+'</div>'});h+='</div><button class="cbi-button cbi-button-apply ts-save" id="ts-save">Save & Apply</button><span id="ts-msg"></span>';app.innerHTML=h;document.getElementById('ts-save').onclick=save}
-function val(name){var e=document.querySelector('input[name="'+name+'"]:checked');return e?e.value:'0'}
-function save(){var d={action:'save',global_enabled:document.getElementById('global_enabled').checked?'1':'0'};groups.forEach(function(g){var p=g[0];d[p+'_enabled']=document.getElementById(p+'_enabled').checked?'1':'0';d[p+'_left_action']=val(p+'_left_action');d[p+'_right_action']=val(p+'_right_action')});var m=document.getElementById('ts-msg');m.textContent=' Saving…';request('POST',d,function(r){m.textContent=r.success?' Saved':' '+(r.error||'Save failed');m.className=r.success?'':'ts-error'})}
-function refresh(){request('GET',null,function(r){if(r.success&&r.data){var e=document.getElementById('ts-mode');if(e)e.textContent='Current switch position: '+(String(r.data.current_mode)==='1'?'Right':'Left');else render(r.data)}else app.innerHTML='<p class="ts-error">'+esc(r.error||'Load failed')+'</p>'})}
-refresh();setInterval(refresh,2000);
+(function() {
+    'use strict';
+
+    var apiUrl = '/cgi-bin/luci/admin/system/toggle/api';
+    var app, saveBtn, statusText, errorDiv, globalSwitch;
+    var statusInterval = null;
+
+    var controls = {};
+    var proxyPrefixes = ['passwall', 'openclash', 'ssr'];
+
+    function $(sel) { return document.querySelector(sel); }
+
+    function create(tag, attrs, children) {
+        var el = document.createElement(tag);
+        if (attrs) {
+            for (var k in attrs) {
+                if (k === 'checked') {
+                    if (attrs[k] === true) el.checked = true;
+                } else if (k === 'text') {
+                    el.textContent = attrs[k];
+                } else {
+                    el.setAttribute(k, attrs[k]);
+                }
+            }
+        }
+        if (children) {
+            for (var i = 0; i < children.length; i++) {
+                var c = children[i];
+                if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+                else el.appendChild(c);
+            }
+        }
+        return el;
+    }
+
+    function showError(msg) {
+        if (errorDiv) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = '❌ ' + msg;
+        }
+        console.error('[toggle]', msg);
+    }
+    function hideError() { if (errorDiv) errorDiv.style.display = 'none'; }
+
+    function post(data, callback) {
+        var bodyData = {};
+        for (var k in data) bodyData[k] = data[k];
+        if (typeof csrf_token !== 'undefined' && csrf_token) bodyData.token = csrf_token;
+        var body = Object.keys(bodyData).map(function(k){
+            return encodeURIComponent(k) + '=' + encodeURIComponent(bodyData[k]);
+        }).join('&');
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiUrl, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        if (typeof csrf_token !== 'undefined' && csrf_token) {
+            xhr.setRequestHeader('X-CSRF-Token', csrf_token);
+        }
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try { callback(JSON.parse(xhr.responseText)); }
+                catch(e) { callback({success:false, error:_('Invalid response')}); }
+            } else {
+                callback({success:false, error:_('Request failed: ') + xhr.status});
+            }
+        };
+        xhr.onerror = function() { callback({success:false, error:_('Network error')}); };
+        xhr.send(body);
+    }
+
+    function fetchMode() {
+        var xhr = new XMLHttpRequest();
+        var url = apiUrl + '?_=' + Date.now() + '&r=' + Math.random();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        xhr.setRequestHeader('Pragma', 'no-cache');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    if (resp.success && resp.data) {
+                        updateMode(resp.data.current_mode);
+                    }
+                } catch(e) {}
+            }
+        };
+        xhr.send();
+    }
+
+    function updateMode(mode) {
+        if (!statusText) return;
+        var txt = (mode === '1' || mode === 1) ? _('Right') : _('Left');
+        statusText.textContent = _('Current switch position:') + ' ' + txt;
+    }
+
+    // ===== 代理项目之间互斥，LED 完全独立 =====
+    function applyMutexRules() {
+        var enabledProxies = [];
+        proxyPrefixes.forEach(function(prefix) {
+            if (controls[prefix] && controls[prefix].enabled.checked) {
+                enabledProxies.push(prefix);
+            }
+        });
+        if (enabledProxies.length > 1) {
+            var keep = enabledProxies[0];
+            for (var i = 1; i < enabledProxies.length; i++) {
+                controls[enabledProxies[i]].enabled.checked = false;
+            }
+        }
+    }
+
+    // ===== 左右互斥：左右不能同时相同 =====
+    function setupOppositeMutex(prefix) {
+        if (!controls[prefix]) return;
+        var g = controls[prefix];
+
+        function setLeftRight(leftIsOn) {
+            g.left_on.checked = leftIsOn;
+            g.left_off.checked = !leftIsOn;
+            g.right_on.checked = !leftIsOn;
+            g.right_off.checked = leftIsOn;
+        }
+
+        g.left_on.addEventListener('change', function() {
+            if (this.checked) setLeftRight(true);
+        });
+        g.left_off.addEventListener('change', function() {
+            if (this.checked) setLeftRight(false);
+        });
+        g.right_on.addEventListener('change', function() {
+            if (this.checked) setLeftRight(false);
+        });
+        g.right_off.addEventListener('change', function() {
+            if (this.checked) setLeftRight(true);
+        });
+    }
+
+    function buildFunctionBlock(title, prefix, data, actionLabels) {
+        var block = create('div', { 'class': 'func-block' });
+        block.appendChild(create('div', { 'class': 'func-title', 'text': title }));
+
+        var rowEnable = create('div', { 'class': 'toggle-item' });
+        var labelEnable = create('span', { 'class': 'toggle-label', 'text': _('Enable') });
+        var inputEnable = create('input', { 'type': 'checkbox', 'checked': data[prefix + '_enabled'] === true });
+        var switchLabel = create('label', { 'class': 'toggle-switch' }, [
+            inputEnable,
+            create('span', { 'class': 'toggle-slider' })
+        ]);
+        rowEnable.appendChild(labelEnable);
+        rowEnable.appendChild(switchLabel);
+        block.appendChild(rowEnable);
+
+        block.appendChild(create('div', { 'class': 'divider' }));
+
+        var labelLeft = create('div', { 'class': 'section-label', 'text': _('Left') });
+        block.appendChild(labelLeft);
+        var leftVal = data[prefix + '_left_action'] === true;
+        var rowLeft = createRadioRow(prefix + '_left_action', leftVal, actionLabels);
+        block.appendChild(rowLeft.row);
+
+        var labelRight = create('div', { 'class': 'section-label', 'text': _('Right') });
+        block.appendChild(labelRight);
+        var rightVal = data[prefix + '_right_action'] === true;
+        var rowRight = createRadioRow(prefix + '_right_action', rightVal, actionLabels);
+        block.appendChild(rowRight.row);
+
+        controls[prefix] = {
+            enabled: inputEnable,
+            left_on: rowLeft.input_on,
+            left_off: rowLeft.input_off,
+            right_on: rowRight.input_on,
+            right_off: rowRight.input_off
+        };
+
+        setupOppositeMutex(prefix);
+
+        if (prefix === 'led' || prefix === 'wifi') {
+            // LED 与 WiFi 完全独立，不关联任何代理项目
+            inputEnable.addEventListener('change', function() {
+                // LED 开关变化时，不做任何代理项目的自动操作
+            });
+        } else {
+            // 代理项目：开启时只互斥其他代理，不关联 LED
+            inputEnable.addEventListener('change', function() {
+                var currentChecked = inputEnable.checked;
+                if (currentChecked) {
+                    proxyPrefixes.forEach(function(p) {
+                        if (p !== prefix && controls[p]) {
+                            controls[p].enabled.checked = false;
+                        }
+                    });
+                }
+            });
+        }
+
+        return block;
+    }
+
+    function createRadioRow(name, onChecked, labels) {
+        var row = create('div', { 'class': 'radio-row' });
+        var input_on  = create('input', { 'type': 'radio', 'name': name, 'id': name + '_on',  'checked': onChecked });
+        var label_on  = create('label', { 'for': name + '_on', 'text': labels[0] });
+        var spacer    = create('span', { 'class': 'spacer' });
+        var input_off = create('input', { 'type': 'radio', 'name': name, 'id': name + '_off', 'checked': !onChecked });
+        var label_off = create('label', { 'for': name + '_off', 'text': labels[1] });
+        row.appendChild(input_on);
+        row.appendChild(label_on);
+        row.appendChild(spacer);
+        row.appendChild(input_off);
+        row.appendChild(label_off);
+        return { row: row, input_on: input_on, input_off: input_off };
+    }
+
+    function syncControlsFromData(data) {
+        if (globalSwitch) {
+            globalSwitch.checked = data.global_enabled === true;
+        }
+        for (var prefix in controls) {
+            if (controls.hasOwnProperty(prefix)) {
+                var group = controls[prefix];
+                group.enabled.checked = data[prefix + '_enabled'] === true;
+                var leftChecked = data[prefix + '_left_action'] === true;
+                var rightChecked = data[prefix + '_right_action'] === true;
+                group.left_on.checked = leftChecked;
+                group.left_off.checked = !leftChecked;
+                group.right_on.checked = rightChecked;
+                group.right_off.checked = !rightChecked;
+            }
+        }
+        applyMutexRules();
+    }
+
+    function syncControlsFromPost(postData) {
+        if (globalSwitch) {
+            globalSwitch.checked = postData.global_enabled === '1';
+        }
+        for (var prefix in controls) {
+            if (controls.hasOwnProperty(prefix)) {
+                var group = controls[prefix];
+                var enabled = postData[prefix + '_enabled'] === '1';
+                var left = postData[prefix + '_left_action'] === '1';
+                var right = postData[prefix + '_right_action'] === '1';
+                group.enabled.checked = enabled;
+                group.left_on.checked = left;
+                group.left_off.checked = !left;
+                group.right_on.checked = right;
+                group.right_off.checked = !right;
+            }
+        }
+        applyMutexRules();
+    }
+
+    function buildUI(data) {
+        data = data || {};
+        app = $('#toggle-app');
+        if (!app) return;
+
+        if (statusInterval) {
+            clearInterval(statusInterval);
+            statusInterval = null;
+        }
+
+        errorDiv = document.getElementById('toggle-error');
+        hideError();
+        app.innerHTML = '';
+
+        var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
+        statusText = create('div', { 'class': 'current-mode', 'text': _('Current switch position:') + ' ' + modeTxt });
+        app.appendChild(statusText);
+
+        var globalBox = create('div', { 'class': 'global-box' });
+        var rowGlobal = create('div', { 'class': 'toggle-item' });
+        var labelGlobal = create('span', { 'class': 'toggle-label', 'text': _('Global Enable') });
+        globalSwitch = create('input', { 'type': 'checkbox', 'checked': data.global_enabled === true });
+        var switchLabel = create('label', { 'class': 'toggle-switch' }, [
+            globalSwitch,
+            create('span', { 'class': 'toggle-slider' })
+        ]);
+        rowGlobal.appendChild(labelGlobal);
+        rowGlobal.appendChild(switchLabel);
+        globalBox.appendChild(rowGlobal);
+        app.appendChild(globalBox);
+
+        var gridBox = create('div', { 'class': 'grid-box' });
+
+        var blocks = [
+            { title: '🔦 ' + _('LED'), prefix: 'led', labels: [_('ON'), _('OFF')] },
+            { title: '📶 ' + _('WiFi'), prefix: 'wifi', labels: [_('ON'), _('OFF')] },
+            { title: '🌐 ' + _('PassWall'), prefix: 'passwall', labels: [_('Enable'), _('Disable')] },
+            { title: '🌐 ' + _('OpenClash'), prefix: 'openclash', labels: [_('Enable'), _('Disable')] },
+            { title: '🚀 ' + _('SSR Plus'), prefix: 'ssr', labels: [_('Enable'), _('Disable')] }
+        ];
+
+        for (var i = 0; i < blocks.length; i++) {
+            var block = buildFunctionBlock(blocks[i].title, blocks[i].prefix, data, blocks[i].labels);
+            gridBox.appendChild(block);
+        }
+
+        app.appendChild(gridBox);
+
+        var btnBox = create('div', { 'class': 'btn-box' });
+        saveBtn = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
+        saveBtn.addEventListener('click', function() {
+            hideError();
+            saveBtn.disabled = true;
+            var origText = saveBtn.textContent;
+            saveBtn.textContent = _('Saving...');
+
+            var postData = { action: 'save' };
+            postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
+            for (var prefix in controls) {
+                if (controls.hasOwnProperty(prefix)) {
+                    var group = controls[prefix];
+                    postData[prefix + '_enabled'] = group.enabled.checked ? '1' : '0';
+                    postData[prefix + '_left_action'] = group.left_on.checked ? '1' : '0';
+                    postData[prefix + '_right_action'] = group.right_on.checked ? '1' : '0';
+                }
+            }
+
+            console.log('[toggle] Sending data:', postData);
+
+            post(postData, function(resp) {
+                saveBtn.disabled = false;
+                if (resp.success) {
+                    saveBtn.textContent = _('Saved');
+                    setTimeout(function() { saveBtn.textContent = origText; }, 1500);
+                    syncControlsFromPost(postData);
+                } else {
+                    showError(resp.error || _('Unknown error'));
+                    saveBtn.textContent = _('Save failed');
+                    setTimeout(function() { saveBtn.textContent = origText; }, 3000);
+                }
+            });
+        });
+        btnBox.appendChild(saveBtn);
+        app.appendChild(btnBox);
+
+        syncControlsFromData(data);
+        statusInterval = setInterval(fetchMode, 2000);
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', apiUrl + '?_=' + Date.now(), true);
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.onload = function() {
+        var data = {};
+        if (xhr.status === 200) {
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.success) data = resp.data;
+            } catch(e) {}
+        }
+        console.log('[toggle] init data:', data);
+        buildUI(data);
+    };
+    xhr.onerror = function() { buildUI({}); };
+    xhr.send();
 })();
