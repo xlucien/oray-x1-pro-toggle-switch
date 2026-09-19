@@ -6,9 +6,9 @@ TAG='x1pro-reset'
 STATE_DIR='/tmp/x1pro-reset'
 LOCK_DIR='/tmp/x1pro-reset.lock'
 
-delay_short() { lua -e 'require("nixio").nanosleep(0,50000000)' 2>/dev/null; }
-delay_window() { lua -e 'require("nixio").nanosleep(1,200000000)' 2>/dev/null; }
-delay_pressed() { lua -e 'require("nixio").nanosleep(0,200000000)' 2>/dev/null; }
+delay_short() { /usr/libexec/x1pro-delay 50; }
+delay_window() { /usr/libexec/x1pro-delay 1200; }
+delay_pressed() { /usr/libexec/x1pro-delay 200; }
 
 lock() {
 	local tries=0 owner

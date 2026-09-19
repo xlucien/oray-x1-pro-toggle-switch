@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
-PKG_VERSION:=1.3.0
+PKG_VERSION:=1.4.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
@@ -14,7 +14,7 @@ define Package/toggle-switch
   SUBMENU:=3. Applications
   TITLE:=Toggle Switch for Oray X1 Pro
   PKGARCH:=all
-  DEPENDS:=+luci-compat +lua +kmod-gpio-button-hotplug
+  DEPENDS:=+luci-base +ucode-mod-fs +ucode-mod-uci +ucode-mod-uloop +kmod-gpio-button-hotplug
 endef
 
 define Package/toggle-switch/description
@@ -45,9 +45,10 @@ define Package/toggle-switch/install
 	$(INSTALL_BIN) ./usr/sbin/x1pro-reset-control $(1)/usr/sbin/x1pro-reset-control
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./usr/libexec/x1pro-reset-button $(1)/usr/libexec/x1pro-reset-button
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller $(1)/usr/lib/lua/luci/view/toggle
-	$(INSTALL_DATA) ./usr/lib/lua/luci/controller/toggle.lua $(1)/usr/lib/lua/luci/controller/toggle.lua
-	$(INSTALL_DATA) ./usr/lib/lua/luci/view/toggle/index.htm $(1)/usr/lib/lua/luci/view/toggle/index.htm
+	$(INSTALL_BIN) ./usr/libexec/x1pro-delay $(1)/usr/libexec/x1pro-delay
+	$(INSTALL_DIR) $(1)/usr/share/ucode/luci/controller $(1)/usr/share/luci/menu.d
+	$(INSTALL_DATA) ./usr/share/ucode/luci/controller/toggle.uc $(1)/usr/share/ucode/luci/controller/toggle.uc
+	$(INSTALL_DATA) ./usr/share/luci/menu.d/toggle-switch.json $(1)/usr/share/luci/menu.d/toggle-switch.json
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/toggle
 	$(INSTALL_DATA) ./www/luci-static/resources/view/toggle/index.js $(1)/www/luci-static/resources/view/toggle/index.js
 	$(INSTALL_DATA) ./www/luci-static/resources/view/toggle/index.css $(1)/www/luci-static/resources/view/toggle/index.css
@@ -68,6 +69,7 @@ define Package/toggle-switch/postinst
 	cp /usr/libexec/x1pro-reset-button /etc/rc.button/reset
 	chmod 0755 /etc/rc.button/reset
 	rm -f /tmp/luci-indexcache
+	rm -f /usr/lib/lua/luci/controller/toggle.lua /usr/lib/lua/luci/view/toggle/index.htm
 }
 exit 0
 endef

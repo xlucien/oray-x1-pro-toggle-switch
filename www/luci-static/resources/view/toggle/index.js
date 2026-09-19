@@ -1,5 +1,5 @@
-(function() {
-    'use strict';
+'use strict';
+'require view';
 
     var apiUrl = '/cgi-bin/luci/admin/system/toggle/api';
     var app, saveBtn, statusText, errorDiv, globalSwitch;
@@ -600,20 +600,38 @@
         statusInterval = setInterval(fetchMode, 2000);
     }
 
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', apiUrl + '?_=' + Date.now(), true);
-    xhr.setRequestHeader('Cache-Control', 'no-cache');
-    xhr.onload = function() {
-        var data = {};
-        if (xhr.status === 200) {
-            try {
-                var resp = JSON.parse(xhr.responseText);
-                if (resp.success) data = resp.data;
-            } catch(e) {}
-        }
-        console.log('[toggle] init data:', data);
-        buildUI(data);
-    };
-    xhr.onerror = function() { buildUI({}); };
-    xhr.send();
-})();
+    function initialize() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', apiUrl + '?_=' + Date.now(), true);
+        xhr.setRequestHeader('Cache-Control', 'no-cache');
+        xhr.onload = function() {
+            var data = {};
+            if (xhr.status === 200) {
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    if (resp.success) data = resp.data;
+                } catch(e) {}
+            }
+            buildUI(data);
+        };
+        xhr.onerror = function() { buildUI({}); };
+        xhr.send();
+    }
+
+    return view.extend({
+        render: function() {
+            if (!document.getElementById('toggle-page-style')) {
+                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css?v=77') });
+                document.head.appendChild(link);
+            }
+            var root = create('div', {}, [
+                create('div', { id: 'toggle-app' }),
+                create('div', { id: 'toggle-error', style: 'display:none' })
+            ]);
+            window.setTimeout(initialize, 0);
+            return root;
+        },
+        handleSaveApply: null,
+        handleSave: null,
+        handleReset: null
+    });

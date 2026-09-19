@@ -6,7 +6,7 @@ set -eu
 BASE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 mkdir -p /usr/sbin /etc/init.d /etc/config /etc/rc.button /etc/x1pro-toggle.d \
-	/usr/lib/lua/luci/controller /usr/lib/lua/luci/view/toggle \
+	/usr/share/ucode/luci/controller /usr/share/luci/menu.d \
 	/www/luci-static/resources/view/toggle
 cp "$BASE/usr/sbin/x1pro-toggle-apply" /usr/sbin/x1pro-toggle-apply
 cp "$BASE/usr/sbin/x1pro-toggle-sync" /usr/sbin/x1pro-toggle-sync
@@ -15,16 +15,18 @@ cp "$BASE/usr/sbin/x1pro-toggle-proxy" /usr/sbin/x1pro-toggle-proxy
 cp "$BASE/usr/sbin/x1pro-reset-control" /usr/sbin/x1pro-reset-control
 mkdir -p /usr/libexec
 cp "$BASE/usr/libexec/x1pro-reset-button" /usr/libexec/x1pro-reset-button
+cp "$BASE/usr/libexec/x1pro-delay" /usr/libexec/x1pro-delay
 cp "$BASE/etc/init.d/x1pro-toggle" /etc/init.d/x1pro-toggle
 cp "$BASE/etc/rc.button/BTN_0" /etc/rc.button/BTN_0
-chmod 0755 /usr/sbin/x1pro-toggle-apply /usr/sbin/x1pro-toggle-sync /usr/sbin/x1pro-toggle-wifi /usr/sbin/x1pro-toggle-proxy /usr/sbin/x1pro-reset-control /usr/libexec/x1pro-reset-button \
+chmod 0755 /usr/sbin/x1pro-toggle-apply /usr/sbin/x1pro-toggle-sync /usr/sbin/x1pro-toggle-wifi /usr/sbin/x1pro-toggle-proxy /usr/sbin/x1pro-reset-control /usr/libexec/x1pro-reset-button /usr/libexec/x1pro-delay \
 	/etc/init.d/x1pro-toggle /etc/rc.button/BTN_0
-cp "$BASE/usr/lib/lua/luci/controller/toggle.lua" /usr/lib/lua/luci/controller/toggle.lua
-cp "$BASE/usr/lib/lua/luci/view/toggle/index.htm" /usr/lib/lua/luci/view/toggle/index.htm
+cp "$BASE/usr/share/ucode/luci/controller/toggle.uc" /usr/share/ucode/luci/controller/toggle.uc
+cp "$BASE/usr/share/luci/menu.d/toggle-switch.json" /usr/share/luci/menu.d/toggle-switch.json
 cp "$BASE/www/luci-static/resources/view/toggle/index.js" /www/luci-static/resources/view/toggle/index.js
 cp "$BASE/www/luci-static/resources/view/toggle/index.css" /www/luci-static/resources/view/toggle/index.css
-chmod 0644 /usr/lib/lua/luci/controller/toggle.lua /usr/lib/lua/luci/view/toggle/index.htm \
+chmod 0644 /usr/share/ucode/luci/controller/toggle.uc /usr/share/luci/menu.d/toggle-switch.json \
 	/www/luci-static/resources/view/toggle/index.js /www/luci-static/resources/view/toggle/index.css
+rm -f /usr/lib/lua/luci/controller/toggle.lua /usr/lib/lua/luci/view/toggle/index.htm
 
 if [ ! -e /etc/config/x1pro-toggle ]; then
 	cp "$BASE/etc/config/x1pro-toggle" /etc/config/x1pro-toggle

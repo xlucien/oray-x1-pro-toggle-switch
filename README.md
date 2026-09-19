@@ -2,6 +2,8 @@
 
 适用于 ImmortalWrt/OpenWrt 的中断驱动拨动开关组件，包含 LuCI 面板、UCI 配置和安装脚本。
 
+LuCI 页面使用原生 JavaScript View，后端使用 ucode；RESET 毫秒延时使用 uloop 定时器。组件不依赖 Lua 或 `luci-compat`，适配 ImmortalWrt 25.12 的 LuCI 架构。
+
 GPIO0 拨杆的 LED、WiFi、代理控制三项互斥，同时最多启用一个；界面切换时会自动关闭另外两项，LuCI 后端保存时还会再次校验。RESET 多击控制独立运行，不参与该互斥关系，也不受 GPIO0 总开关影响。
 
 拨杆页提供“保存”和“保存并应用”：前者只写入配置，等待下一次实际拨动后执行；后者保存后立即按当前拨杆位置执行。
@@ -14,7 +16,7 @@ LuCI 中提供独立的 WiFi 功能模块，默认映射为左拨关闭、右拨
 - 左拨（GPIO0 高电平）将所有 radio 设为关闭并执行 `wifi reload`。
 - 右拨（GPIO0 低电平）恢复保存的各 radio 状态并执行 `wifi reload`。
 - 重复保存 LuCI 配置不会覆盖快照，避免在 Wi‑Fi 已被左拨关闭时把“全关闭”误存为原始状态。
-- 在 LuCI 中关闭 WiFi 模块时会先恢复快照，防止退出控制后 Wi‑Fi 意外保持关闭。
+- 使用“保存并应用”关闭 WiFi 模块时会先恢复快照；使用“保存”只写配置，不立即改变 WiFi 状态。
 - 快照不包含 SSID、密钥、信道或其他无线参数。
 
 快照保存在 `/etc/config/x1pro-toggle` 的 `wifi_state` section 中。模块默认关闭，安装或升级不会改变当前 Wi‑Fi 状态。
