@@ -2,245 +2,481 @@
     'use strict';
 
     var apiUrl = '/cgi-bin/luci/admin/system/toggle/api';
-    var app, errorDiv, statusText, globalSwitch;
-    var featureSelect, leftAction, rightAction, activeFeature = 'none';
-    var proxyPanel, proxyTarget, proxyStatusText, proxyDetectBtn;
-    var resetControls = {}, featureSettings = {}, statusInterval = null;
+    var app, saveBtn, statusText, errorDiv, globalSwitch;
+    var proxyEnable, proxyTarget, proxyStatusText, proxyDetectBtn;
+    var resetControls = {};
+    var statusInterval = null;
 
-    function $(s) { return document.querySelector(s); }
+    var controls = {};
+
+    function $(sel) { return document.querySelector(sel); }
+
     function create(tag, attrs, children) {
-        var el = document.createElement(tag); attrs = attrs || {};
-        Object.keys(attrs).forEach(function(k) {
-            if (k === 'text') el.textContent = attrs[k];
-            else if (k === 'checked') el.checked = attrs[k] === true;
-            else if (k === 'disabled') el.disabled = attrs[k] === true;
-            else el.setAttribute(k, attrs[k]);
-        });
-        (children || []).forEach(function(c) { el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+        var el = document.createElement(tag);
+        if (attrs) {
+            for (var k in attrs) {
+                if (k === 'checked') {
+                    if (attrs[k] === true) el.checked = true;
+                } else if (k === 'text') {
+                    el.textContent = attrs[k];
+                } else {
+                    el.setAttribute(k, attrs[k]);
+                }
+            }
+        }
+        if (children) {
+            for (var i = 0; i < children.length; i++) {
+                var c = children[i];
+                if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+                else el.appendChild(c);
+            }
+        }
         return el;
     }
-    function option(value, label, selected) {
-        var o = create('option', { value: value, text: label }); o.selected = selected === true; return o;
+
+    function wrapSelect(select) {
+        return create('div', { 'class': 'select-wrap' }, [
+            select,
+            create('span', { 'class': 'select-arrow', 'text': '▾' })
+        ]);
     }
-    function selectWrap(select) {
-        return create('span', { 'class': 'toggle-select-wrap' }, [select, create('span', { 'class': 'toggle-select-arrow', text: '▾' })]);
+
+    function showError(msg) {
+        if (errorDiv) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = '❌ ' + msg;
+        }
+        console.error('[toggle]', msg);
     }
-    function formRow(label, field, description) {
-        var row = create('div', { 'class': 'cbi-value' });
-        row.appendChild(create('label', { 'class': 'cbi-value-title', text: label }));
-        var body = create('div', { 'class': 'cbi-value-field' }, [field]);
-        if (description) body.appendChild(create('div', { 'class': 'cbi-value-description', text: description }));
-        row.appendChild(body); return row;
-    }
-    function makeSelect(items, value) {
-        var select = create('select', { 'class': 'cbi-input-select' });
-        items.forEach(function(item) { select.appendChild(option(item[0], item[1], item[0] === value)); });
-        return select;
-    }
-    function showError(message) { errorDiv.style.display = 'block'; errorDiv.textContent = '错误：' + message; }
     function hideError() { if (errorDiv) errorDiv.style.display = 'none'; }
 
     function post(data, callback) {
-        var payload = {}, request = new XMLHttpRequest();
-        Object.keys(data).forEach(function(k) { payload[k] = data[k]; });
-        if (typeof csrf_token !== 'undefined' && csrf_token) payload.token = csrf_token;
-        var body = Object.keys(payload).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]); }).join('&');
-        request.open('POST', apiUrl, true);
-        request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        if (typeof csrf_token !== 'undefined' && csrf_token) request.setRequestHeader('X-CSRF-Token', csrf_token);
-        request.onload = function() {
-            try {
-                var response = JSON.parse(request.responseText || '{}');
-                if (request.status !== 200 && !response.error) response.error = '请求失败：' + request.status;
-                callback(response);
-            } catch (e) { callback({ success: false, error: '服务器返回内容无效' }); }
-        };
-        request.onerror = function() { callback({ success: false, error: '网络错误' }); };
-        request.send(body);
-    }
+        var bodyData = {};
+        for (var k in data) bodyData[k] = data[k];
+        if (typeof csrf_token !== 'undefined' && csrf_token) bodyData.token = csrf_token;
+        var body = Object.keys(bodyData).map(function(k){
+            return encodeURIComponent(k) + '=' + encodeURIComponent(bodyData[k]);
+        }).join('&');
 
-    function updateMode(mode) { statusText.textContent = '当前拨杆位置：' + ((mode === '1' || mode === 1) ? '右侧' : '左侧'); }
-    function fetchMode() {
-        var request = new XMLHttpRequest();
-        request.open('GET', apiUrl + '?brief=1&_=' + Date.now(), true);
-        request.setRequestHeader('Cache-Control', 'no-cache');
-        request.onload = function() {
-            if (request.status !== 200) return;
-            try { var r = JSON.parse(request.responseText); if (r.success && r.data) updateMode(r.data.current_mode); } catch (e) {}
-        };
-        request.send();
-    }
-
-    function featureFromData(data) {
-        if (data.proxy_enabled) return 'proxy';
-        if (data.wifi_enabled) return 'wifi';
-        if (data.led_enabled) return 'led';
-        return 'none';
-    }
-    function actionLabels(feature) {
-        return feature === 'proxy' ? [['1', '恢复代理'], ['0', '关闭代理']] : [['1', '打开'], ['0', '关闭']];
-    }
-    function rememberFeatureActions() {
-        if (activeFeature === 'none' || !leftAction || !rightAction || !leftAction.options.length || !rightAction.options.length) return;
-        featureSettings[activeFeature].left = leftAction.value === '1';
-        featureSettings[activeFeature].right = rightAction.value === '1';
-    }
-    function fillActions(select, feature, enabled) {
-        select.innerHTML = '';
-        actionLabels(feature).forEach(function(item) { select.appendChild(option(item[0], item[1], item[0] === (enabled ? '1' : '0'))); });
-    }
-    function updateProxyAvailability() {
-        var enabled = activeFeature === 'proxy';
-        proxyPanel.classList.toggle('is-disabled', !enabled);
-        proxyTarget.disabled = !enabled; proxyDetectBtn.disabled = !enabled;
-        proxyPanel.setAttribute('aria-disabled', enabled ? 'false' : 'true');
-    }
-    function selectFeature(feature) {
-        rememberFeatureActions(); activeFeature = feature;
-        var disabled = feature === 'none'; leftAction.disabled = disabled; rightAction.disabled = disabled;
-        if (disabled) {
-            leftAction.innerHTML = '<option>—</option>'; rightAction.innerHTML = '<option>—</option>';
-        } else {
-            fillActions(leftAction, feature, featureSettings[feature].left);
-            fillActions(rightAction, feature, featureSettings[feature].right);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiUrl, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        if (typeof csrf_token !== 'undefined' && csrf_token) {
+            xhr.setRequestHeader('X-CSRF-Token', csrf_token);
         }
-        updateProxyAvailability();
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try { callback(JSON.parse(xhr.responseText)); }
+                catch(e) { callback({success:false, error:_('Invalid response')}); }
+            } else {
+                callback({success:false, error:_('Request failed: ') + xhr.status});
+            }
+        };
+        xhr.onerror = function() { callback({success:false, error:_('Network error')}); };
+        xhr.send(body);
+    }
+
+    function fetchMode() {
+        var xhr = new XMLHttpRequest();
+        var url = apiUrl + '?brief=1&_=' + Date.now() + '&r=' + Math.random();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        xhr.setRequestHeader('Pragma', 'no-cache');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    if (resp.success && resp.data) {
+                        updateMode(resp.data.current_mode);
+                    }
+                } catch(e) {}
+            }
+        };
+        xhr.send();
+    }
+
+    function updateMode(mode) {
+        if (!statusText) return;
+        var txt = (mode === '1' || mode === 1) ? _('Right') : _('Left');
+        statusText.textContent = _('Current switch position:') + ' ' + txt;
+    }
+
+    function enableOnlyFeature(active) {
+        if (active !== 'led' && controls.led) controls.led.enabled.checked = false;
+        if (active !== 'wifi' && controls.wifi) controls.wifi.enabled.checked = false;
+        if (active !== 'proxy' && proxyEnable) proxyEnable.checked = false;
+    }
+
+    // LED、WiFi、代理控制三者互斥；旧配置冲突时按代理、WiFi、LED保留一个。
+    function applyMutexRules() {
+        if (proxyEnable && proxyEnable.checked) enableOnlyFeature('proxy');
+        else if (controls.wifi && controls.wifi.enabled.checked) enableOnlyFeature('wifi');
+        else if (controls.led && controls.led.enabled.checked) enableOnlyFeature('led');
+    }
+
+    // ===== 左右互斥：左右不能同时相同 =====
+    function setupOppositeMutex(prefix) {
+        if (!controls[prefix]) return;
+        var g = controls[prefix];
+
+        function setLeftRight(leftIsOn) {
+            g.left_on.checked = leftIsOn;
+            g.left_off.checked = !leftIsOn;
+            g.right_on.checked = !leftIsOn;
+            g.right_off.checked = leftIsOn;
+        }
+
+        g.left_on.addEventListener('change', function() {
+            if (this.checked) setLeftRight(true);
+        });
+        g.left_off.addEventListener('change', function() {
+            if (this.checked) setLeftRight(false);
+        });
+        g.right_on.addEventListener('change', function() {
+            if (this.checked) setLeftRight(false);
+        });
+        g.right_off.addEventListener('change', function() {
+            if (this.checked) setLeftRight(true);
+        });
+    }
+
+    function buildFunctionBlock(title, prefix, data, actionLabels) {
+        var block = create('div', { 'class': 'func-block' });
+        block.appendChild(create('div', { 'class': 'func-title', 'text': title }));
+
+        var rowEnable = create('div', { 'class': 'toggle-item' });
+        var labelEnable = create('span', { 'class': 'toggle-label', 'text': _('Enable') });
+        var inputEnable = create('input', { 'type': 'checkbox', 'checked': data[prefix + '_enabled'] === true });
+        var switchLabel = create('label', { 'class': 'toggle-switch' }, [
+            inputEnable,
+            create('span', { 'class': 'toggle-slider' })
+        ]);
+        rowEnable.appendChild(labelEnable);
+        rowEnable.appendChild(switchLabel);
+        block.appendChild(rowEnable);
+
+        block.appendChild(create('div', { 'class': 'divider' }));
+
+        var labelLeft = create('div', { 'class': 'section-label', 'text': _('Left') });
+        block.appendChild(labelLeft);
+        var leftVal = data[prefix + '_left_action'] === true;
+        var rowLeft = createRadioRow(prefix + '_left_action', leftVal, actionLabels);
+        block.appendChild(rowLeft.row);
+
+        var labelRight = create('div', { 'class': 'section-label', 'text': _('Right') });
+        block.appendChild(labelRight);
+        var rightVal = data[prefix + '_right_action'] === true;
+        var rowRight = createRadioRow(prefix + '_right_action', rightVal, actionLabels);
+        block.appendChild(rowRight.row);
+
+        controls[prefix] = {
+            enabled: inputEnable,
+            left_on: rowLeft.input_on,
+            left_off: rowLeft.input_off,
+            right_on: rowRight.input_on,
+            right_off: rowRight.input_off
+        };
+
+        setupOppositeMutex(prefix);
+
+        inputEnable.addEventListener('change', function() {
+            if (inputEnable.checked) enableOnlyFeature(prefix);
+        });
+
+        return block;
+    }
+
+    function createRadioRow(name, onChecked, labels) {
+        var row = create('div', { 'class': 'radio-row' });
+        var input_on  = create('input', { 'type': 'radio', 'name': name, 'id': name + '_on',  'checked': onChecked });
+        var label_on  = create('label', { 'for': name + '_on', 'text': labels[0] });
+        var spacer    = create('span', { 'class': 'spacer' });
+        var input_off = create('input', { 'type': 'radio', 'name': name, 'id': name + '_off', 'checked': !onChecked });
+        var label_off = create('label', { 'for': name + '_off', 'text': labels[1] });
+        row.appendChild(input_on);
+        row.appendChild(label_on);
+        row.appendChild(spacer);
+        row.appendChild(input_off);
+        row.appendChild(label_off);
+        return { row: row, input_on: input_on, input_off: input_off };
     }
 
     function proxyLabel(target) {
-        return ({ none: '无', conflict: '多个代理', passwall: 'PassWall', openclash: 'OpenClash', ssrplus: 'SSR Plus',
-            nikki: 'Nikki', daed: 'daed', homeproxy: 'HomeProxy', mihomo: 'MihomoTProxy' })[target] || target;
+        var labels = {
+            none: '无', conflict: '检测到多个代理', passwall: 'PassWall',
+            openclash: 'OpenClash', ssrplus: 'SSR Plus', nikki: 'Nikki',
+            daed: 'daed', homeproxy: 'HomeProxy', mihomo: 'MihomoTProxy'
+        };
+        return labels[target] || target;
     }
+
     function renderProxyStatus(status) {
         status = status || { target: 'none', state: 'not_installed' };
-        var labels = { not_installed: '未安装', installed: '已安装，未启用', running: '正在运行',
-            error: '配置已启用，但启动异常', conflict: '检测到多个代理，请手动选择' };
-        proxyStatusText.className = 'toggle-inline-status status-' + status.state;
-        proxyStatusText.textContent = '当前状态：' + (status.target === 'none' ? '' : proxyLabel(status.target) + ' · ') + (labels[status.state] || status.state);
+        var states = {
+            not_installed: '未安装', installed: '已安装，未启用',
+            running: '正在运行', error: '配置已启用，但启动异常',
+            conflict: '检测到多个代理，请手动选择'
+        };
+        proxyStatusText.className = 'proxy-status status-' + status.state;
+        proxyStatusText.textContent = '当前状态：' +
+            (status.target === 'none' ? '' : proxyLabel(status.target) + ' · ') +
+            (states[status.state] || status.state);
     }
-    function buildProxySection(data) {
-        proxyPanel = create('div', { 'class': 'ts-card toggle-subsection', id: 'proxy-settings' });
-        proxyPanel.appendChild(create('h3', { text: '代理设置' }));
-        proxyTarget = makeSelect([['auto', '自动检测'], ['passwall', 'PassWall'], ['openclash', 'OpenClash'],
-            ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'], ['homeproxy', 'HomeProxy'], ['mihomo', 'MihomoTProxy']], data.proxy_target || 'auto');
-        proxyPanel.appendChild(formRow('代理程序', selectWrap(proxyTarget)));
-        proxyStatusText = create('span', { 'class': 'toggle-inline-status' }); renderProxyStatus(data.proxy_status);
-        proxyPanel.appendChild(formRow('检测状态', proxyStatusText));
-        proxyDetectBtn = create('button', { type: 'button', 'class': 'btn cbi-button cbi-button-neutral', text: '重新检测' });
+
+    function buildProxyPane(data) {
+        var pane = create('div', { 'class': 'control-section', 'id': 'proxy-pane' });
+        var card = create('div', { 'class': 'proxy-card' });
+        card.appendChild(create('div', { 'class': 'func-title', 'text': '🌐 代理控制' }));
+
+        var enableRow = create('div', { 'class': 'toggle-item proxy-row' });
+        enableRow.appendChild(create('span', { 'class': 'toggle-label', 'text': '启用代理拨杆控制' }));
+        proxyEnable = create('input', { 'type': 'checkbox', 'checked': data.proxy_enabled === true });
+        proxyEnable.addEventListener('change', function() {
+            if (proxyEnable.checked) enableOnlyFeature('proxy');
+        });
+        enableRow.appendChild(create('label', { 'class': 'toggle-switch' }, [proxyEnable, create('span', { 'class': 'toggle-slider' })]));
+        card.appendChild(enableRow);
+
+        var selectRow = create('div', { 'class': 'proxy-field' });
+        selectRow.appendChild(create('label', { 'text': '代理选择' }));
+        proxyTarget = create('select', { 'class': 'proxy-select' });
+        var choices = [
+            ['auto', '自动检测'], ['passwall', 'PassWall'], ['openclash', 'OpenClash'],
+            ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'],
+            ['homeproxy', 'HomeProxy'], ['mihomo', 'MihomoTProxy']
+        ];
+        choices.forEach(function(item) {
+            var option = create('option', { 'value': item[0], 'text': item[1] });
+            if ((data.proxy_target || 'auto') === item[0]) option.selected = true;
+            proxyTarget.appendChild(option);
+        });
+        selectRow.appendChild(wrapSelect(proxyTarget));
+        card.appendChild(selectRow);
+
+        var actions = create('div', { 'class': 'proxy-actions' });
+        actions.appendChild(create('div', { 'class': 'proxy-action', 'text': '⬅ 左拨：关闭代理' }));
+        actions.appendChild(create('div', { 'class': 'proxy-action', 'text': '➡ 右拨：恢复代理' }));
+        card.appendChild(actions);
+
+        proxyStatusText = create('div', { 'class': 'proxy-status' });
+        card.appendChild(proxyStatusText);
+        renderProxyStatus(data.proxy_status);
+
+        proxyDetectBtn = create('button', { 'class': 'btn-detect', 'text': '重新检测' });
         proxyDetectBtn.addEventListener('click', function() {
             proxyDetectBtn.disabled = true;
-            post({ action: 'detect_proxy', proxy_target: proxyTarget.value }, function(r) {
-                proxyDetectBtn.disabled = activeFeature !== 'proxy';
-                if (r.success) renderProxyStatus(r.proxy_status); else showError(r.error || '检测失败');
+            post({ action: 'detect_proxy', proxy_target: proxyTarget.value }, function(resp) {
+                proxyDetectBtn.disabled = false;
+                if (resp.success) renderProxyStatus(resp.proxy_status);
+                else showError(resp.error || '检测失败');
             });
         });
-        proxyPanel.appendChild(formRow('', proxyDetectBtn));
-        return proxyPanel;
+        card.appendChild(proxyDetectBtn);
+        pane.appendChild(card);
+        return pane;
     }
 
-    function resetText(value, type) {
-        var dict = {
-            gesture: { single: '单击', double: '双击', triple: '三击', long: '长按', none: '无' },
-            action: { wifi: '切换 WiFi', led: '切换灯光', reboot: '重启', factory_reset: '恢复出厂', none: '无' },
-            result: { disabled: '未启用', led_on: '灯光已打开', led_off: '灯光已关闭', wifi_off: 'WiFi 已关闭',
-                wifi_restored: 'WiFi 已恢复', no_wifi_snapshot: '没有可恢复的 WiFi 快照', executing: '执行中', unsupported: '不支持' }
-        };
-        return (dict[type] && dict[type][value]) || value;
+    function resetActionLabel(value) {
+        return { wifi: '切换 WiFi', led: '切换灯光', reboot: '重启' }[value] || value;
     }
-    function buildResetRow(gesture, label, data) {
-        var enabled = create('input', { type: 'checkbox', 'class': 'cbi-input-checkbox', checked: data['reset_' + gesture + '_enabled'] === true });
-        var action = makeSelect([['wifi', '切换 WiFi'], ['led', '切换灯光'], ['reboot', '重启']], data['reset_' + gesture + '_action']);
-        resetControls[gesture] = { enabled: enabled, action: action };
-        return formRow(label, create('span', { 'class': 'toggle-reset-controls' }, [enabled, selectWrap(action)]));
+
+    function buildResetActionRow(gesture, title, data) {
+        var row = create('div', { 'class': 'reset-action-row' });
+        var head = create('div', { 'class': 'reset-action-head' });
+        head.appendChild(create('strong', { 'text': title }));
+        var enabled = create('input', { 'type': 'checkbox', 'checked': data['reset_' + gesture + '_enabled'] === true });
+        head.appendChild(create('label', { 'class': 'toggle-switch' }, [enabled, create('span', { 'class': 'toggle-slider' })]));
+        row.appendChild(head);
+        var select = create('select', { 'class': 'proxy-select' });
+        [['wifi', '切换 WiFi'], ['led', '切换灯光'], ['reboot', '重启']].forEach(function(item) {
+            var option = create('option', { 'value': item[0], 'text': item[1] });
+            if (data['reset_' + gesture + '_action'] === item[0]) option.selected = true;
+            select.appendChild(option);
+        });
+        row.appendChild(wrapSelect(select));
+        resetControls[gesture] = { enabled: enabled, action: select };
+        return row;
     }
-    function buildResetSection(data) {
-        var section = create('div', { 'class': 'ts-card toggle-section' });
-        section.appendChild(create('h3', { text: 'RESET 按键控制' }));
-        section.appendChild(create('div', { 'class': 'cbi-section-descr', text: '独立运行，不受拨杆总开关影响；连击判定时间为 1200 毫秒。' }));
-        section.appendChild(buildResetRow('single', '单击', data));
-        section.appendChild(buildResetRow('double', '双击', data));
-        section.appendChild(buildResetRow('triple', '三击', data));
-        section.appendChild(formRow('长按 5 秒', create('span', { 'class': 'label notice', text: '始终启用 · 恢复出厂设置' })));
-        var recent = data.reset_status || {}, text = '暂无记录';
+
+    function buildResetPane(data) {
+        var pane = create('div', { 'class': 'control-section', 'id': 'reset-pane' });
+        var card = create('div', { 'class': 'proxy-card reset-card' });
+        card.appendChild(create('div', { 'class': 'func-title', 'text': '⏻ RESET 控制' }));
+        card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 按键控制独立运行，不受总开关影响。连击判定时间为 1200 毫秒。' }));
+        card.appendChild(buildResetActionRow('single', '单击', data));
+        card.appendChild(buildResetActionRow('double', '双击', data));
+        card.appendChild(buildResetActionRow('triple', '三击', data));
+
+        var longRow = create('div', { 'class': 'reset-long-row' });
+        longRow.appendChild(create('strong', { 'text': '长按 5 秒' }));
+        longRow.appendChild(create('span', { 'class': 'reset-protected', 'text': '始终启用 · 恢复出厂设置' }));
+        card.appendChild(longRow);
+
+        var recent = data.reset_status || {};
+        var recentText = '最近动作：暂无';
         if (recent.gesture && recent.gesture !== 'none') {
-            text = resetText(recent.gesture, 'gesture') + ' · ' + resetText(recent.action, 'action') + ' · ' + resetText(recent.result, 'result');
-            if (recent.time) text += ' · ' + recent.time;
+            recentText = '最近动作：' + recent.gesture + ' · ' + resetActionLabel(recent.action) + ' · ' + recent.result;
+            if (recent.time) recentText += ' · ' + recent.time;
         }
-        section.appendChild(formRow('最近动作', create('span', { text: text })));
-        return section;
+        card.appendChild(create('div', { 'class': 'reset-recent', 'text': recentText }));
+        pane.appendChild(card);
+        return pane;
     }
 
-    function collectData(action) {
-        rememberFeatureActions();
-        var data = { action: action, global_enabled: globalSwitch.checked ? '1' : '0', proxy_target: proxyTarget.value };
-        ['led', 'wifi', 'proxy'].forEach(function(feature) {
-            data[feature + '_enabled'] = activeFeature === feature ? '1' : '0';
-            data[feature + '_left_action'] = featureSettings[feature].left ? '1' : '0';
-            data[feature + '_right_action'] = featureSettings[feature].right ? '1' : '0';
-        });
-        ['single', 'double', 'triple'].forEach(function(gesture) {
-            data['reset_' + gesture + '_enabled'] = resetControls[gesture].enabled.checked ? '1' : '0';
-            data['reset_' + gesture + '_action'] = resetControls[gesture].action.value;
-        });
-        return data;
+    function syncControlsFromData(data) {
+        if (globalSwitch) {
+            globalSwitch.checked = data.global_enabled === true;
+        }
+        for (var prefix in controls) {
+            if (controls.hasOwnProperty(prefix)) {
+                var group = controls[prefix];
+                group.enabled.checked = data[prefix + '_enabled'] === true;
+                var leftChecked = data[prefix + '_left_action'] === true;
+                var rightChecked = data[prefix + '_right_action'] === true;
+                group.left_on.checked = leftChecked;
+                group.left_off.checked = !leftChecked;
+                group.right_on.checked = rightChecked;
+                group.right_off.checked = !rightChecked;
+            }
+        }
+        applyMutexRules();
     }
-    function save(action, button) {
-        hideError();
-        var buttons = document.querySelectorAll('.toggle-actions button'), original = button.textContent;
-        for (var i = 0; i < buttons.length; i++) buttons[i].disabled = true;
-        button.textContent = '保存中…';
-        post(collectData(action), function(r) {
-            for (var j = 0; j < buttons.length; j++) buttons[j].disabled = false;
-            if (!r.success) { button.textContent = original; showError(r.error || '保存失败'); return; }
-            button.textContent = '已保存'; if (r.proxy_status) renderProxyStatus(r.proxy_status);
-            setTimeout(function() { button.textContent = original; }, 1300);
-        });
+
+    function syncControlsFromPost(postData) {
+        if (globalSwitch) {
+            globalSwitch.checked = postData.global_enabled === '1';
+        }
+        for (var prefix in controls) {
+            if (controls.hasOwnProperty(prefix)) {
+                var group = controls[prefix];
+                var enabled = postData[prefix + '_enabled'] === '1';
+                var left = postData[prefix + '_left_action'] === '1';
+                var right = postData[prefix + '_right_action'] === '1';
+                group.enabled.checked = enabled;
+                group.left_on.checked = left;
+                group.left_off.checked = !left;
+                group.right_on.checked = right;
+                group.right_off.checked = !right;
+            }
+        }
+        applyMutexRules();
     }
 
     function buildUI(data) {
-        app = $('#toggle-app'); errorDiv = $('#toggle-error'); app.innerHTML = ''; hideError();
-        featureSettings = {
-            led: { left: data.led_left_action === true, right: data.led_right_action === true },
-            wifi: { left: data.wifi_left_action === true, right: data.wifi_right_action === true },
-            proxy: { left: data.proxy_left_action === true, right: data.proxy_right_action === true }
-        };
-        statusText = create('div', { 'class': 'ts-status toggle-mode' }); updateMode(data.current_mode); app.appendChild(statusText);
+        data = data || {};
+        app = $('#toggle-app');
+        if (!app) return;
 
-        var main = create('div', { 'class': 'ts-global toggle-section' });
-        main.appendChild(create('h3', { text: '拨杆控制' }));
-        main.appendChild(create('div', { 'class': 'cbi-section-descr', text: 'LED、WiFi、代理三选一；总开关仅控制 GPIO0 拨杆功能。' }));
-        globalSwitch = create('input', { type: 'checkbox', 'class': 'cbi-input-checkbox', checked: data.global_enabled === true });
-        main.appendChild(formRow('总开关', globalSwitch));
-        activeFeature = featureFromData(data);
-        featureSelect = makeSelect([['none', '不启用'], ['led', 'LED'], ['wifi', 'WiFi'], ['proxy', '代理']], activeFeature);
-        main.appendChild(formRow('拨杆功能', selectWrap(featureSelect)));
-        leftAction = makeSelect([], '0'); rightAction = makeSelect([], '0');
-        main.appendChild(formRow('左拨动作', selectWrap(leftAction)));
-        main.appendChild(formRow('右拨动作', selectWrap(rightAction)));
-        app.appendChild(main);
-        var grid = create('div', { 'class': 'ts-grid' });
-        grid.appendChild(buildProxySection(data));
-        grid.appendChild(buildResetSection(data));
-        app.appendChild(grid);
-        featureSelect.addEventListener('change', function() { selectFeature(featureSelect.value); });
-        selectFeature(activeFeature);
+        if (statusInterval) {
+            clearInterval(statusInterval);
+            statusInterval = null;
+        }
 
-        var actions = create('div', { 'class': 'cbi-page-actions toggle-actions ts-save' });
-        var saveOnly = create('button', { type: 'button', 'class': 'btn cbi-button cbi-button-save', text: '保存' });
-        var saveApply = create('button', { type: 'button', 'class': 'btn cbi-button cbi-button-apply', text: '保存并应用' });
-        saveOnly.addEventListener('click', function() { save('save_only', saveOnly); });
-        saveApply.addEventListener('click', function() { save('save', saveApply); });
-        actions.appendChild(saveOnly); actions.appendChild(saveApply); app.appendChild(actions);
-        if (statusInterval) clearInterval(statusInterval); statusInterval = setInterval(fetchMode, 2000);
+        errorDiv = document.getElementById('toggle-error');
+        hideError();
+        app.innerHTML = '';
+
+        var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
+        statusText = create('div', { 'class': 'current-mode', 'text': _('Current switch position:') + ' ' + modeTxt });
+        app.appendChild(statusText);
+
+        var globalBox = create('div', { 'class': 'global-box' });
+        var rowGlobal = create('div', { 'class': 'toggle-item' });
+        var labelGlobal = create('span', { 'class': 'toggle-label', 'text': _('Global Enable') });
+        globalSwitch = create('input', { 'type': 'checkbox', 'checked': data.global_enabled === true });
+        var switchLabel = create('label', { 'class': 'toggle-switch' }, [
+            globalSwitch,
+            create('span', { 'class': 'toggle-slider' })
+        ]);
+        rowGlobal.appendChild(labelGlobal);
+        rowGlobal.appendChild(switchLabel);
+        globalBox.appendChild(rowGlobal);
+        app.appendChild(globalBox);
+
+        app.appendChild(create('div', { 'class': 'group-heading', 'text': 'GPIO0 拨杆控制（LED / WiFi / 代理三选一）' }));
+        var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
+        var gridBox = create('div', { 'class': 'grid-box' });
+
+        var blocks = [
+            { title: '🔦 ' + _('LED'), prefix: 'led', labels: [_('ON'), _('OFF')] },
+            { title: '📶 ' + _('WiFi'), prefix: 'wifi', labels: [_('ON'), _('OFF')] }
+        ];
+
+        for (var i = 0; i < blocks.length; i++) {
+            var block = buildFunctionBlock(blocks[i].title, blocks[i].prefix, data, blocks[i].labels);
+            gridBox.appendChild(block);
+        }
+
+        basicPane.appendChild(gridBox);
+        app.appendChild(basicPane);
+        app.appendChild(buildProxyPane(data));
+        app.appendChild(create('div', { 'class': 'group-heading reset-heading', 'text': 'RESET 按键控制（独立运行）' }));
+        app.appendChild(buildResetPane(data));
+
+        var btnBox = create('div', { 'class': 'btn-box' });
+        saveBtn = create('button', { 'class': 'btn-save', 'text': _('Save & Apply') });
+        saveBtn.addEventListener('click', function() {
+            hideError();
+            saveBtn.disabled = true;
+            var origText = saveBtn.textContent;
+            saveBtn.textContent = _('Saving...');
+
+            var postData = { action: 'save' };
+            postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
+            postData['proxy_enabled'] = proxyEnable.checked ? '1' : '0';
+            postData['proxy_target'] = proxyTarget.value;
+            postData['proxy_left_action'] = '0';
+            postData['proxy_right_action'] = '1';
+            ['single', 'double', 'triple'].forEach(function(gesture) {
+                postData['reset_' + gesture + '_enabled'] = resetControls[gesture].enabled.checked ? '1' : '0';
+                postData['reset_' + gesture + '_action'] = resetControls[gesture].action.value;
+            });
+            for (var prefix in controls) {
+                if (controls.hasOwnProperty(prefix)) {
+                    var group = controls[prefix];
+                    postData[prefix + '_enabled'] = group.enabled.checked ? '1' : '0';
+                    postData[prefix + '_left_action'] = group.left_on.checked ? '1' : '0';
+                    postData[prefix + '_right_action'] = group.right_on.checked ? '1' : '0';
+                }
+            }
+
+            console.log('[toggle] Sending data:', postData);
+
+            post(postData, function(resp) {
+                saveBtn.disabled = false;
+                if (resp.success) {
+                    saveBtn.textContent = _('Saved');
+                    setTimeout(function() { saveBtn.textContent = origText; }, 1500);
+                    syncControlsFromPost(postData);
+                    if (resp.proxy_status) renderProxyStatus(resp.proxy_status);
+                } else {
+                    showError(resp.error || _('Unknown error'));
+                    saveBtn.textContent = _('Save failed');
+                    setTimeout(function() { saveBtn.textContent = origText; }, 3000);
+                }
+            });
+        });
+        btnBox.appendChild(saveBtn);
+        app.appendChild(btnBox);
+
+        syncControlsFromData(data);
+        statusInterval = setInterval(fetchMode, 2000);
     }
 
-    var request = new XMLHttpRequest();
-    request.open('GET', apiUrl + '?_=' + Date.now(), true); request.setRequestHeader('Cache-Control', 'no-cache');
-    request.onload = function() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', apiUrl + '?_=' + Date.now(), true);
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.onload = function() {
         var data = {};
-        try { var response = JSON.parse(request.responseText); if (response.success) data = response.data || {}; } catch (e) {}
+        if (xhr.status === 200) {
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.success) data = resp.data;
+            } catch(e) {}
+        }
+        console.log('[toggle] init data:', data);
         buildUI(data);
     };
-    request.onerror = function() { buildUI({}); };
-    request.send();
+    xhr.onerror = function() { buildUI({}); };
+    xhr.send();
 })();

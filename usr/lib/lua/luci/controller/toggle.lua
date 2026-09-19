@@ -132,8 +132,7 @@ function api()
         return
     end
 
-    local requested_action = http.formvalue("action")
-    if method == "POST" and (requested_action == "save" or requested_action == "save_only") then
+    if method == "POST" and http.formvalue("action") == "save" then
         local old_wifi_enabled = cfg_get("wifi_enabled", "0")
         local new_led_enabled = http.formvalue("led_enabled") == "1" and "1" or "0"
         local new_wifi_enabled = http.formvalue("wifi_enabled") == "1" and "1" or "0"
@@ -192,10 +191,8 @@ function api()
         elseif old_proxy_enabled == "1" and new_proxy_enabled == "0" then
             os.execute("/usr/sbin/x1pro-toggle-proxy restore >/dev/null 2>&1")
         end
-        if requested_action == "save" then
-            apply_current_state()
-        end
-        json_out({ success = true, applied = requested_action == "save", proxy_status = proxy_status(new_proxy_target) })
+        apply_current_state()
+        json_out({ success = true, proxy_status = proxy_status(new_proxy_target) })
         return
     end
 
