@@ -34,6 +34,13 @@
         return el;
     }
 
+    function wrapSelect(select) {
+        return create('div', { 'class': 'select-wrap' }, [
+            select,
+            create('span', { 'class': 'select-arrow', 'text': '▾' })
+        ]);
+    }
+
     function showError(msg) {
         if (errorDiv) {
             errorDiv.style.display = 'block';
@@ -243,7 +250,7 @@
             if ((data.proxy_target || 'auto') === item[0]) option.selected = true;
             proxyTarget.appendChild(option);
         });
-        selectRow.appendChild(proxyTarget);
+        selectRow.appendChild(wrapSelect(proxyTarget));
         card.appendChild(selectRow);
 
         var actions = create('div', { 'class': 'proxy-actions' });
@@ -286,7 +293,7 @@
             if (data['reset_' + gesture + '_action'] === item[0]) option.selected = true;
             select.appendChild(option);
         });
-        row.appendChild(select);
+        row.appendChild(wrapSelect(select));
         resetControls[gesture] = { enabled: enabled, action: select };
         return row;
     }

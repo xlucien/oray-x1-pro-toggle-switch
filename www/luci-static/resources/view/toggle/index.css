@@ -100,10 +100,29 @@
 .proxy-field label { color: #444; font-size: 14px; }
 .proxy-select {
     min-width: 210px;
-    padding: 7px 10px;
+    width: 100%;
+    padding: 7px 34px 7px 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
     background: #fff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.select-wrap {
+    position: relative;
+    display: inline-block;
+    min-width: 210px;
+}
+.select-arrow {
+    position: absolute;
+    top: 50%;
+    right: 11px;
+    transform: translateY(-52%);
+    color: #90a4ae;
+    font-size: 16px;
+    line-height: 1;
+    pointer-events: none;
 }
 .proxy-actions {
     display: grid;
@@ -345,7 +364,7 @@
     }
     .proxy-actions { grid-template-columns: 1fr; }
     .proxy-field { align-items: stretch; flex-direction: column; text-align: left; }
-    .proxy-select { width: 100%; min-width: 0; }
+    .proxy-select, .select-wrap { width: 100%; min-width: 0; }
     .reset-action-row { grid-template-columns: 1fr; gap: 8px; }
     .reset-long-row { align-items: flex-start; flex-direction: column; }
 }
