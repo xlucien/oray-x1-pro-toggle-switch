@@ -25,7 +25,7 @@ LuCI 的“代理控制”选项卡支持自动检测、PassWall、OpenClash、S
 
 RESET 控制独立于 GPIO0 拨杆的总开关。连击窗口为 1200 毫秒，单击与双击默认关闭，三击默认执行重启；长按 5 秒始终保留系统恢复出厂功能。单击、双击、三击均可分别启用并选择切换 WiFi、切换灯光或重启。四击及以上只记录日志，不执行动作。
 
-RESET 的 WiFi 切换使用独立的 `reset_wifi_state` 快照：关闭前保存各 radio 状态，再次切换时恢复；没有快照时不会强制打开全部 radio。安装会把原始脚本备份为 `/etc/rc.button/reset.x1pro-stock`。保存 LuCI 配置会清除尚未结算的连击，长按达到 5 秒也会取消全部短按动作。
+RESET 的 WiFi 切换使用独立的一次性 `reset_wifi_state` 快照：关闭前保存各 radio 状态，再次切换时恢复并清除；没有有效快照时不会强制打开全部 radio。安装会把原始脚本备份为 `/etc/rc.button/reset.x1pro-stock`。保存 LuCI 配置会清除尚未结算的连击，长按达到 5 秒也会取消全部短按动作。系统没有挂载 `/overlay` 时沿用原厂保护，不安排恢复出厂动作。
 
 ## 结论
 

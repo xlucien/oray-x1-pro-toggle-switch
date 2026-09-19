@@ -236,7 +236,7 @@
     }
 
     function buildProxyPane(data) {
-        var pane = create('div', { 'class': 'tab-pane', 'id': 'proxy-pane' });
+        var pane = create('div', { 'class': 'control-section', 'id': 'proxy-pane' });
         var card = create('div', { 'class': 'proxy-card' });
         card.appendChild(create('div', { 'class': 'func-title', 'text': '🌐 代理控制' }));
 
@@ -285,13 +285,6 @@
         return pane;
     }
 
-    function activateTab(name) {
-        var buttons = document.querySelectorAll('.tab-button');
-        var panes = document.querySelectorAll('.tab-pane');
-        for (var i = 0; i < buttons.length; i++) buttons[i].classList.toggle('active', buttons[i].getAttribute('data-toggle-pane') === name);
-        for (var j = 0; j < panes.length; j++) panes[j].classList.toggle('active', panes[j].id === name + '-pane');
-    }
-
     function resetActionLabel(value) {
         return { wifi: '切换 WiFi', led: '切换灯光', reboot: '重启' }[value] || value;
     }
@@ -315,7 +308,7 @@
     }
 
     function buildResetPane(data) {
-        var pane = create('div', { 'class': 'tab-pane', 'id': 'reset-pane' });
+        var pane = create('div', { 'class': 'control-section', 'id': 'reset-pane' });
         var card = create('div', { 'class': 'proxy-card reset-card' });
         card.appendChild(create('div', { 'class': 'func-title', 'text': '⏻ RESET 控制' }));
         card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 按键控制独立运行，不受总开关影响。连击判定时间为 1200 毫秒。' }));
@@ -409,16 +402,8 @@
         globalBox.appendChild(rowGlobal);
         app.appendChild(globalBox);
 
-        var tabs = create('div', { 'class': 'tabs' });
-        var basicTab = create('button', { 'class': 'tab-button active', 'data-toggle-pane': 'basic', 'text': '基本设置' });
-        var proxyTab = create('button', { 'class': 'tab-button', 'data-toggle-pane': 'proxy', 'text': '代理控制' });
-        var resetTab = create('button', { 'class': 'tab-button', 'data-toggle-pane': 'reset', 'text': 'RESET 控制' });
-        basicTab.addEventListener('click', function() { activateTab('basic'); });
-        proxyTab.addEventListener('click', function() { activateTab('proxy'); });
-        resetTab.addEventListener('click', function() { activateTab('reset'); });
-        tabs.appendChild(basicTab); tabs.appendChild(proxyTab); tabs.appendChild(resetTab); app.appendChild(tabs);
-
-        var basicPane = create('div', { 'class': 'tab-pane active', 'id': 'basic-pane' });
+        app.appendChild(create('div', { 'class': 'group-heading', 'text': 'GPIO0 拨杆控制（受总开关控制）' }));
+        var basicPane = create('div', { 'class': 'control-section', 'id': 'basic-pane' });
         var gridBox = create('div', { 'class': 'grid-box' });
 
         var blocks = [
@@ -434,6 +419,7 @@
         basicPane.appendChild(gridBox);
         app.appendChild(basicPane);
         app.appendChild(buildProxyPane(data));
+        app.appendChild(create('div', { 'class': 'group-heading reset-heading', 'text': 'RESET 按键控制（独立运行）' }));
         app.appendChild(buildResetPane(data));
 
         var btnBox = create('div', { 'class': 'btn-box' });
