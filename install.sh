@@ -37,7 +37,7 @@ uci -q get x1pro-toggle.main.reset_single_enabled >/dev/null || uci set x1pro-to
 uci -q get x1pro-toggle.main.reset_single_action >/dev/null || uci set x1pro-toggle.main.reset_single_action='wifi'
 uci -q get x1pro-toggle.main.reset_double_enabled >/dev/null || uci set x1pro-toggle.main.reset_double_enabled='0'
 uci -q get x1pro-toggle.main.reset_double_action >/dev/null || uci set x1pro-toggle.main.reset_double_action='led'
-uci -q get x1pro-toggle.main.reset_triple_enabled >/dev/null || uci set x1pro-toggle.main.reset_triple_enabled='1'
+uci -q get x1pro-toggle.main.reset_triple_enabled >/dev/null || uci set x1pro-toggle.main.reset_triple_enabled='0'
 uci -q get x1pro-toggle.main.reset_triple_action >/dev/null || uci set x1pro-toggle.main.reset_triple_action='reboot'
 uci -q commit x1pro-toggle
 

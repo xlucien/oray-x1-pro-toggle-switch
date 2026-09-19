@@ -109,7 +109,7 @@ function api()
             reset_single_action = cfg_get("reset_single_action", "wifi"),
             reset_double_enabled = cfg_get("reset_double_enabled", "0") == "1",
             reset_double_action = cfg_get("reset_double_action", "led"),
-            reset_triple_enabled = cfg_get("reset_triple_enabled", "1") == "1",
+            reset_triple_enabled = cfg_get("reset_triple_enabled", "0") == "1",
             reset_triple_action = cfg_get("reset_triple_action", "reboot"),
             reset_status = reset_status(),
             passwall_enabled = cfg_get("passwall_enabled", "0") == "1",

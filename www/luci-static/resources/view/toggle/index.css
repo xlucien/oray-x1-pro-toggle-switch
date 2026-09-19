@@ -188,6 +188,13 @@
     border-radius: 6px;
     color: #444;
 }
+.proxy-action .section-label { margin-top: 0; }
+.proxy-action-hint {
+    margin: -2px 0 12px;
+    color: #777;
+    font-size: 13px;
+    text-align: center;
+}
 .proxy-status {
     padding: 11px 14px;
     margin: 10px 0 14px;

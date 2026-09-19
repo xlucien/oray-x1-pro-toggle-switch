@@ -98,7 +98,7 @@
     function updateMode(mode) {
         if (!statusText) return;
         var txt = (mode === '1' || mode === 1) ? _('Right') : _('Left');
-        statusText.textContent = _('Current switch position:') + ' ' + txt;
+        statusText.textContent = '当前拨杆位置：' + txt;
     }
 
     function enableOnlyFeature(active) {
@@ -253,10 +253,37 @@
         selectRow.appendChild(wrapSelect(proxyTarget));
         card.appendChild(selectRow);
 
-        var actions = create('div', { 'class': 'proxy-actions' });
-        actions.appendChild(create('div', { 'class': 'proxy-action', 'text': '⬅ 左拨：关闭代理' }));
-        actions.appendChild(create('div', { 'class': 'proxy-action', 'text': '➡ 右拨：恢复代理' }));
+        var actions = create('div', { 'class': 'proxy-actions proxy-action-settings' });
+        var leftAction = create('div', { 'class': 'proxy-action' });
+        leftAction.appendChild(create('div', { 'class': 'section-label', 'text': '左拨' }));
+        var leftRadios = createRadioRow('proxy_left_action', data.proxy_left_action === true, ['恢复代理', '关闭代理']);
+        leftAction.appendChild(leftRadios.row);
+        var rightAction = create('div', { 'class': 'proxy-action' });
+        rightAction.appendChild(create('div', { 'class': 'section-label', 'text': '右拨' }));
+        var rightRadios = createRadioRow('proxy_right_action', data.proxy_right_action === true, ['恢复代理', '关闭代理']);
+        rightAction.appendChild(rightRadios.row);
+        actions.appendChild(leftAction);
+        actions.appendChild(rightAction);
         card.appendChild(actions);
+
+        var actionHint = create('div', { 'class': 'proxy-action-hint' });
+        function updateProxyActionHint() {
+            actionHint.textContent = '左拨：' + (leftRadios.input_on.checked ? '恢复代理' : '关闭代理') +
+                '；右拨：' + (rightRadios.input_on.checked ? '恢复代理' : '关闭代理') + '。';
+        }
+        card.appendChild(actionHint);
+        controls.proxy = {
+            enabled: proxyEnable,
+            left_on: leftRadios.input_on,
+            left_off: leftRadios.input_off,
+            right_on: rightRadios.input_on,
+            right_off: rightRadios.input_off
+        };
+        setupOppositeMutex('proxy');
+        [leftRadios.input_on, leftRadios.input_off, rightRadios.input_on, rightRadios.input_off].forEach(function(input) {
+            input.addEventListener('change', updateProxyActionHint);
+        });
+        updateProxyActionHint();
 
         proxyStatusText = create('div', { 'class': 'proxy-status' });
         card.appendChild(proxyStatusText);
@@ -395,7 +422,7 @@
         resetTab.addEventListener('click', function() { selectPage('reset'); });
 
         var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
-        statusText = create('div', { 'class': 'current-mode', 'text': _('Current switch position:') + ' ' + modeTxt });
+        statusText = create('div', { 'class': 'current-mode', 'text': '当前拨杆位置：' + modeTxt });
         paddlePage.appendChild(statusText);
 
         var globalBox = create('div', { 'class': 'global-box' });
@@ -467,8 +494,6 @@
             postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
             postData['proxy_enabled'] = proxyEnable.checked ? '1' : '0';
             postData['proxy_target'] = proxyTarget.value;
-            postData['proxy_left_action'] = '0';
-            postData['proxy_right_action'] = '1';
             ['single', 'double', 'triple'].forEach(function(gesture) {
                 postData['reset_' + gesture + '_enabled'] = resetControls[gesture].enabled.checked ? '1' : '0';
                 postData['reset_' + gesture + '_action'] = resetControls[gesture].action.value;
