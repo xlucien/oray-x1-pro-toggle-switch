@@ -89,10 +89,20 @@ detect_one() {
 }
 
 resolve() {
-	local found rc
+	local found rc last
 	if [ "$CHOICE" != auto ]; then echo "$CHOICE"; return; fi
 	found="$(detect_one running)"; rc=$?
-	[ "$rc" -le 1 ] && { echo "$found"; return; }
+	[ "$rc" -eq 0 ] && { echo "$found"; return; }
+	last="$(uci -q get x1pro-toggle.main.proxy_last_target)"
+	[ -n "$last" ] || last="$(uci -q get x1pro-toggle.proxy_state.target)"
+	if [ -n "$last" ] && [ "$last" != auto ] && installed "$last"; then
+		if [ "$rc" -eq 1 ]; then
+			running "$last" && { echo "$last"; return; }
+		else
+			echo "$last"; return
+		fi
+	fi
+	[ "$rc" -eq 1 ] && { echo conflict; return 1; }
 	found="$(detect_one configured)"; rc=$?
 	[ "$rc" -le 1 ] && { echo "$found"; return; }
 	found="$(detect_one installed)"; rc=$?
@@ -151,6 +161,7 @@ case "$1" in
 	snapshot)
 		TARGET="$(resolve)"
 		[ "$TARGET" != none ] && [ "$TARGET" != conflict ] && installed "$TARGET" || exit 0
+		uci -q set "x1pro-toggle.main.proxy_last_target=$TARGET"
 		configured "$TARGET" && CONFIGURED=1 || CONFIGURED=0
 		running "$TARGET" && WAS_RUNNING=1 || WAS_RUNNING=0
 		uci -q set x1pro-toggle.proxy_state='proxy_state'
@@ -161,16 +172,24 @@ case "$1" in
 		logger -t "$TAG" "snapshot target=$TARGET configured=$CONFIGURED running=$WAS_RUNNING"
 		;;
 	off)
-		TARGET="$(uci -q get x1pro-toggle.proxy_state.target)"
-		if [ -z "$TARGET" ]; then
-			"$0" snapshot "$CHOICE"
-			TARGET="$(uci -q get x1pro-toggle.proxy_state.target)"
-		fi
+		TARGET="$(resolve)"
 		[ "$TARGET" != none ] && [ "$TARGET" != conflict ] && installed "$TARGET" || exit 0
+		uci -q set "x1pro-toggle.main.proxy_last_target=$TARGET"
+		uci -q commit x1pro-toggle
 		SERVICE="$(service_for "$TARGET")"
 		set_configured "$TARGET" 0
 		[ -x "/etc/init.d/$SERVICE" ] && "/etc/init.d/$SERVICE" stop >/dev/null 2>&1
 		logger -t "$TAG" "stopped $TARGET"
+		;;
+	on)
+		TARGET="$(resolve)"
+		[ "$TARGET" != none ] && [ "$TARGET" != conflict ] && installed "$TARGET" || exit 1
+		uci -q set "x1pro-toggle.main.proxy_last_target=$TARGET"
+		uci -q commit x1pro-toggle
+		SERVICE="$(service_for "$TARGET")"
+		set_configured "$TARGET" 1
+		[ -x "/etc/init.d/$SERVICE" ] && "/etc/init.d/$SERVICE" restart >/dev/null 2>&1
+		logger -t "$TAG" "started $TARGET"
 		;;
 	restore)
 		TARGET="$(uci -q get x1pro-toggle.proxy_state.target)"

@@ -258,11 +258,11 @@
         var actions = create('div', { 'class': 'proxy-actions proxy-action-settings hidden-control-source' });
         var leftAction = create('div', { 'class': 'proxy-action' });
         leftAction.appendChild(create('div', { 'class': 'section-label', 'text': '左拨' }));
-        var leftRadios = createRadioRow('proxy_left_action', data.proxy_left_action === true, ['恢复代理', '关闭代理']);
+        var leftRadios = createRadioRow('proxy_left_action', data.proxy_left_action === true, ['打开代理', '关闭代理']);
         leftAction.appendChild(leftRadios.row);
         var rightAction = create('div', { 'class': 'proxy-action' });
         rightAction.appendChild(create('div', { 'class': 'section-label', 'text': '右拨' }));
-        var rightRadios = createRadioRow('proxy_right_action', data.proxy_right_action === true, ['恢复代理', '关闭代理']);
+        var rightRadios = createRadioRow('proxy_right_action', data.proxy_right_action === true, ['打开代理', '关闭代理']);
         rightAction.appendChild(rightRadios.row);
         actions.appendChild(leftAction);
         actions.appendChild(rightAction);
@@ -470,7 +470,7 @@
         combined.appendChild(sharedActions);
 
         function actionLabelsFor(feature) {
-            if (feature === 'proxy') return [['1', '恢复代理'], ['0', '关闭代理']];
+            if (feature === 'proxy') return [['1', '打开代理'], ['0', '关闭代理']];
             if (feature === 'wifi') return [['1', '恢复 WiFi'], ['0', '关闭 WiFi']];
             return [['1', '打开灯光'], ['0', '关闭灯光']];
         }
