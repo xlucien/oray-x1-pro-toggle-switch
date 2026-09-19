@@ -26,7 +26,7 @@ config x1pro_toggle 'main'
 	option reset_single_enabled '0'
 	option reset_single_action 'wifi'
 	option reset_double_enabled '0'
-	option reset_double_action 'led'
+	option reset_double_action 'wifi'
 	option reset_triple_enabled '0'
 	option reset_triple_action 'reboot'
 

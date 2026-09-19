@@ -103,7 +103,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
     margin: 0 0 18px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border-color-medium, rgba(127, 127, 127, .3));
 }
 .page-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -117,15 +117,23 @@
     border: 0;
     border-bottom: 3px solid transparent;
     background: transparent;
-    color: #666;
+    color: inherit;
+    opacity: .68;
     font-size: 14px;
     cursor: pointer;
     white-space: nowrap;
 }
 .tab-button.active {
-    color: #1976D2;
-    border-bottom-color: #2196F3;
+    color: var(--primary-color, #1976D2);
+    border-bottom-color: var(--primary-color, #2196F3);
+    background: var(--background-color-high, rgba(127, 127, 127, .08));
+    opacity: 1;
     font-weight: bold;
+}
+.tab-button:hover,
+.tab-button:focus {
+    color: var(--primary-color, #1976D2);
+    background: var(--background-color-high, rgba(127, 127, 127, .06));
 }
 .tab-pane { display: none; }
 .tab-pane.active { display: block; }

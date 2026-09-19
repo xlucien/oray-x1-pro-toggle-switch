@@ -5,6 +5,7 @@
     var app, saveBtn, statusText, errorDiv, globalSwitch;
     var proxyEnable, proxyTarget, proxyStatusText, proxyDetectBtn;
     var resetControls = {};
+    var currentMode = '0';
     var statusInterval = null;
 
     var controls = {};
@@ -97,6 +98,7 @@
 
     function updateMode(mode) {
         if (!statusText) return;
+        currentMode = (mode === '1' || mode === 1) ? '1' : '0';
         var txt = (mode === '1' || mode === 1) ? _('Right') : _('Left');
         statusText.textContent = '当前拨杆位置：' + txt;
     }
@@ -418,6 +420,7 @@
         resetTab.addEventListener('click', function() { selectPage('reset'); });
 
         var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? _('Right') : _('Left');
+        currentMode = (data.current_mode === '1' || data.current_mode === 1) ? '1' : '0';
         var modeBar = create('div', { 'class': 'current-mode' });
         statusText = create('span', { 'class': 'mode-position', 'text': '当前拨杆位置：' + modeTxt });
         var rowGlobal = create('div', { 'class': 'mode-global' });
@@ -529,6 +532,15 @@
 
         function saveAll(button, action) {
             hideError();
+            var feature = featureSelect.value;
+            if (action === 'save' && (feature === 'wifi' || feature === 'proxy')) {
+                var group = controls[feature];
+                var currentActionOn = currentMode === '1' ? group.right_on.checked : group.left_on.checked;
+                if (!currentActionOn) {
+                    var targetName = feature === 'wifi' ? 'WiFi' : '代理';
+                    if (!window.confirm('保存并应用后将立即关闭' + targetName + '，远程连接可能中断。确定继续吗？')) return;
+                }
+            }
             var allSaveButtons = document.querySelectorAll('.btn-save');
             for (var b = 0; b < allSaveButtons.length; b++) allSaveButtons[b].disabled = true;
             var origText = button.textContent;
