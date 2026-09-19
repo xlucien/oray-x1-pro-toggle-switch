@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# gpio-button-hotplug maps linux,code BTN_0 to BUTTON=BTN_0.
+# X1 Pro DTS uses GPIO_ACTIVE_LOW: pressed=LOW, released=HIGH.
+case "$ACTION" in
+	pressed)  exec /usr/sbin/x1pro-toggle-apply low ;;
+	released) exec /usr/sbin/x1pro-toggle-apply high ;;
+esac

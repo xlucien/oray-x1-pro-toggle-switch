@@ -1,0 +1,22 @@
+config x1pro_toggle 'main'
+	# 0 = record/log events only; 1 = execute enabled feature actions below
+	option global_enabled '0'
+
+	# X1 Pro DTS is GPIO_ACTIVE_LOW: pressed=LOW, released=HIGH.
+	# Electrical HIGH follows GL-MT3600BE Left; LOW follows Right.
+	option led_enabled '0'
+	option led_name 'white:status'
+	option led_high_action '1'
+	option led_low_action '0'
+
+	option passwall_enabled '0'
+	option passwall_high_action '1'
+	option passwall_low_action '0'
+
+	option openclash_enabled '0'
+	option openclash_high_action '0'
+	option openclash_low_action '1'
+
+	option ssr_enabled '0'
+	option ssr_high_action '1'
+	option ssr_low_action '0'

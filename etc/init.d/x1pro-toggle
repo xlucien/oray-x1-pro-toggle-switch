@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+start() {
+	# One read at boot; subsequent changes arrive through gpio-button-hotplug.
+	/usr/sbin/x1pro-toggle-sync
+}
+
+reload() {
+	/usr/sbin/x1pro-toggle-sync
+}
+

@@ -1,0 +1,2 @@
+#toggle-app{max-width:980px}.ts-status,.ts-global,.ts-card{background:var(--background-color-high,#fff);border:1px solid var(--border-color-medium,#ddd);border-radius:8px;padding:16px;margin:12px 0}.ts-status{font-size:18px;font-weight:600}.ts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.ts-card h3{margin:0 0 14px}.ts-row{display:flex;justify-content:space-between;align-items:center;margin:10px 0}.ts-actions label{margin-right:12px}.ts-save{margin-top:16px}.ts-note{color:#777;font-size:13px}.ts-error{color:#c62828}
+

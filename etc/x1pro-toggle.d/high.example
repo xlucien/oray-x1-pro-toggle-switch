@@ -1,0 +1,4 @@
+#!/bin/sh
+# Optional GPIO0 HIGH hook. Rename to "high" and chmod 0755 to activate.
+logger -t x1pro-toggle-hook 'GPIO0 high hook'
+
