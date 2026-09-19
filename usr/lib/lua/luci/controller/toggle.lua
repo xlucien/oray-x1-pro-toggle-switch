@@ -184,7 +184,7 @@ function api()
         end
         os.execute("uci -q commit x1pro-toggle")
         os.execute("/usr/sbin/x1pro-reset-control clear >/dev/null 2>&1")
-        if old_wifi_enabled == "1" and new_wifi_enabled == "0" then
+        if requested_action == "save" and old_wifi_enabled == "1" and new_wifi_enabled == "0" then
             os.execute("/usr/sbin/x1pro-toggle-wifi restore >/dev/null 2>&1")
         end
         if new_proxy_enabled == "1" and (old_proxy_enabled == "0" or old_proxy_target ~= new_proxy_target) then

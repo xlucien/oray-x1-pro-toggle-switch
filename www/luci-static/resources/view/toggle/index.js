@@ -579,14 +579,22 @@
                 }
             });
         }
-        function addSaveButton(page, action, label) {
+        function addSaveButtons(page, definitions) {
             var btnBox = create('div', { 'class': 'btn-box' });
-            var button = create('button', { 'class': 'btn-save', 'text': label });
-            button.addEventListener('click', function() { saveAll(button, action); });
-            btnBox.appendChild(button); page.appendChild(btnBox);
+            definitions.forEach(function(definition) {
+                var button = create('button', { 'class': 'btn-save ' + (definition.className || ''), 'text': definition.label });
+                button.addEventListener('click', function() { saveAll(button, definition.action); });
+                btnBox.appendChild(button);
+            });
+            page.appendChild(btnBox);
         }
-        addSaveButton(paddlePage, 'save', '保存并应用');
-        addSaveButton(resetPage, 'save_only', '保存');
+        addSaveButtons(paddlePage, [
+            { action: 'save_only', label: '保存', className: 'btn-save-only' },
+            { action: 'save', label: '保存并应用' }
+        ]);
+        addSaveButtons(resetPage, [
+            { action: 'save_only', label: '保存' }
+        ]);
 
         syncControlsFromData(data);
         statusInterval = setInterval(fetchMode, 2000);
