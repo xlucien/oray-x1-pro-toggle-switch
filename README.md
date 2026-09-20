@@ -1,12 +1,12 @@
-# 拨杆控制：Oray X1 Pro GPIO0 拨动开关
+# 滑动开关控制：Oray X1 Pro GPIO0 滑动开关
 
 适用于 ImmortalWrt/OpenWrt 的中断驱动拨动开关组件，包含 LuCI 面板、UCI 配置和安装脚本。
 
 LuCI 页面使用原生 JavaScript View，后端使用 ucode；RESET 毫秒延时使用 uloop 定时器。组件不依赖 Lua 或 `luci-compat`，适配 ImmortalWrt 25.12 的 LuCI 架构。
 
-GPIO0 拨杆的 LED、WiFi、代理控制三项互斥，同时最多启用一个；界面切换时会自动关闭另外两项，LuCI 后端保存时还会再次校验。RESET 多击控制独立运行，不参与该互斥关系，也不受 GPIO0 总开关影响。
+GPIO0 滑动开关的 LED、WiFi、代理控制三项互斥，同时最多启用一个；选择“不启用”并保存后状态为“未启用”，选择任一功能并保存后自动变为“已启用”，不再需要单独操作总开关。RESET 多击控制独立运行，不参与该互斥关系。
 
-拨杆页提供“保存”和“保存并应用”：前者只写入配置，等待下一次实际拨动后执行；后者保存后立即按当前拨杆位置执行。
+滑动开关页提供“保存”和“保存并应用”：前者只写入配置，等待下一次实际滑动后执行；后者保存后立即按当前位置执行。
 
 ## Wi‑Fi 状态切换
 
@@ -23,13 +23,13 @@ LuCI 中提供独立的 WiFi 功能模块，默认映射为左拨关闭、右拨
 
 ## 代理控制
 
-LuCI 的代理设置支持自动检测、PassWall、OpenClash、SSR Plus、Nikki、daed、HomeProxy 和 MihomoTProxy。拨杆可直接关闭或打开代理。自动模式会持久记录最近由拨杆关闭的代理；所有代理均未运行时，优先重新打开这个目标。没有历史记录且检测到多个候选时报告冲突并要求手动选择。从代理切换到 LED、WiFi 或“不启用”时只停止拨杆管理，不会改变代理当前状态。
+LuCI 的代理设置支持自动检测、PassWall、PassWall2、OpenClash、SSR Plus、Nikki、daed、HomeProxy 和 MihomoTProxy。滑动开关可直接关闭或打开代理。自动模式会持久记录最近由滑动开关关闭的代理；所有代理均未运行时，优先重新打开这个目标。没有历史记录且检测到多个候选时报告冲突并要求手动选择。从代理切换到 LED、WiFi 或“不启用”时只停止滑动开关管理，不会改变代理当前状态。
 
 检测只在打开页面、点击“重新检测”或拨杆状态变化时执行，没有常驻轮询。状态分为未安装、已安装未启用、正在运行、配置已启用但启动异常和多代理冲突。脚本只修改所选代理自身的启用项并调用其 init 服务，不改动通用 network、wireless 配置。
 
 ## RESET 多击控制
 
-RESET 控制独立于 GPIO0 拨杆的总开关。连击窗口为 1200 毫秒，单击、双击、三击默认全部关闭；长按 5 秒始终保留系统恢复出厂功能。单击、双击、三击均可分别启用并选择切换 WiFi、切换灯光或重启。四击及以上只记录日志，不执行动作。
+RESET 重置键独立于 GPIO0 滑动开关。连击窗口为 1200 毫秒，单击、双击、三击默认全部关闭；长按 5 秒始终保留系统恢复出厂功能。单击、双击、三击均可分别启用并选择切换 WiFi、切换灯光或重启。四击及以上只记录日志，不执行动作。
 
 RESET 的 WiFi 切换使用独立的一次性 `reset_wifi_state` 快照：关闭前保存各 radio 状态，再次切换时恢复并清除；没有有效快照时不会强制打开全部 radio。安装会把原始脚本备份为 `/etc/rc.button/reset.x1pro-stock`。保存 LuCI 配置会清除尚未结算的连击，长按达到 5 秒也会取消全部短按动作。系统没有挂载 `/overlay` 时沿用原厂保护，不安排恢复出厂动作。
 
@@ -135,7 +135,7 @@ uci commit x1pro-toggle
 /etc/init.d/x1pro-toggle reload
 ```
 
-也可把 `proxy_target` 改为 `passwall`、`openclash`、`ssrplus`、`nikki`、`daed`、`homeproxy` 或 `mihomo`。这表示 GPIO0 高电平关闭所选代理，低电平恢复启用模块时保存的状态。
+也可把 `proxy_target` 改为 `passwall`、`passwall2`、`openclash`、`ssrplus`、`nikki`、`daed`、`homeproxy` 或 `mihomo`。这表示 GPIO0 高电平关闭所选代理，低电平恢复启用模块时保存的状态。
 
 如需自定义动作，把示例复制为可执行 hook：
 

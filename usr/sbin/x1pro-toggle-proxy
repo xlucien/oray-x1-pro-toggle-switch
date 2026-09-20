@@ -9,7 +9,7 @@ CHOICE="${2:-$(uci -q get x1pro-toggle.main.proxy_target 2>/dev/null)}"
 
 valid_target() {
 	case "$1" in
-		auto|passwall|openclash|ssrplus|nikki|daed|homeproxy|mihomo) return 0 ;;
+		auto|passwall|passwall2|openclash|ssrplus|nikki|daed|homeproxy|mihomo) return 0 ;;
 		*) return 1 ;;
 	esac
 }
@@ -17,6 +17,7 @@ valid_target() {
 service_for() {
 	case "$1" in
 		passwall) echo passwall ;;
+		passwall2) echo passwall2 ;;
 		openclash) echo openclash ;;
 		ssrplus) echo shadowsocksr ;;
 		nikki) echo nikki ;;
@@ -38,6 +39,7 @@ configured() {
 	local value
 	case "$1" in
 		passwall) value="$(uci -q get passwall.@global[0].enabled)" ;;
+		passwall2) value="$(uci -q get passwall2.@global[0].enabled)" ;;
 		openclash) value="$(uci -q get openclash.config.enable)" ;;
 		ssrplus)
 			value="$(uci -q get shadowsocksr.@global[0].enabled)"
@@ -64,6 +66,7 @@ running() {
 	echo "$json" | grep -q '"running"[[:space:]]*:[[:space:]]*true' && return 0
 	case "$1" in
 		passwall) pgrep -f '/tmp/etc/passwall/|/usr/share/passwall/' >/dev/null 2>&1 ;;
+		passwall2) pgrep -f '/tmp/etc/passwall2/|/usr/share/passwall2/' >/dev/null 2>&1 ;;
 		openclash) pgrep -f '/etc/openclash/.*clash|/etc/openclash/.*mihomo' >/dev/null 2>&1 ;;
 		ssrplus) pgrep -f 'ssr-redir|ss-redir|ssrplus|/tmp/etc/ssr' >/dev/null 2>&1 ;;
 		nikki) pgrep -f '/etc/nikki/|mihomo.*nikki' >/dev/null 2>&1 ;;
@@ -75,7 +78,7 @@ running() {
 
 detect_one() {
 	local mode="$1" item found='' count=0
-	for item in passwall openclash ssrplus nikki daed homeproxy mihomo; do
+	for item in passwall passwall2 openclash ssrplus nikki daed homeproxy mihomo; do
 		installed "$item" || continue
 		case "$mode" in
 			running) running "$item" || continue ;;
@@ -114,6 +117,7 @@ set_configured() {
 	local item="$1" value="$2" package
 	case "$item" in
 		passwall) uci -q set "passwall.@global[0].enabled=$value"; package=passwall ;;
+		passwall2) uci -q set "passwall2.@global[0].enabled=$value"; package=passwall2 ;;
 		openclash) uci -q set "openclash.config.enable=$value"; package=openclash ;;
 		ssrplus)
 			if uci -q get shadowsocksr.@global[0].enabled >/dev/null; then

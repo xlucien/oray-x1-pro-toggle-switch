@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
 PKG_VERSION:=1.4.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
 
@@ -12,7 +12,7 @@ define Package/toggle-switch
   SECTION:=luci
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
-  TITLE:=Oray X1 Pro 拨杆控制
+  TITLE:=Oray X1 Pro 滑动开关控制
   PKGARCH:=all
   DEPENDS:=+luci-base +ucode-mod-fs +ucode-mod-uci +ucode-mod-uloop +kmod-gpio-button-hotplug
 endef

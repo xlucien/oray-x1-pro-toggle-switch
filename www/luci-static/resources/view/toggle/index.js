@@ -2,7 +2,7 @@
 'require view';
 
     var apiUrl = '/cgi-bin/luci/admin/system/toggle/api';
-    var app, saveBtn, statusText, errorDiv, globalSwitch;
+    var app, saveBtn, statusText, errorDiv, globalStatusText;
     var proxyEnable, proxyTarget, proxyStatusText, proxyDetectBtn;
     var resetControls = {};
     var currentMode = '0';
@@ -100,7 +100,13 @@
         if (!statusText) return;
         currentMode = (mode === '1' || mode === 1) ? '1' : '0';
         var txt = (mode === '1' || mode === 1) ? '右侧' : '左侧';
-        statusText.textContent = '当前拨杆位置：' + txt;
+        statusText.textContent = '当前滑动开关位置：' + txt;
+    }
+
+    function updateGlobalStatus(enabled) {
+        if (!globalStatusText) return;
+        globalStatusText.textContent = enabled ? '已启用' : '未启用';
+        globalStatusText.className = 'control-status ' + (enabled ? 'is-enabled' : 'is-disabled');
     }
 
     function enableOnlyFeature(active) {
@@ -205,7 +211,7 @@
 
     function proxyLabel(target) {
         var labels = {
-            none: '无', conflict: '检测到多个代理', passwall: 'PassWall',
+            none: '无', conflict: '检测到多个代理', passwall: 'PassWall', passwall2: 'PassWall2',
             openclash: 'OpenClash', ssrplus: 'SSR Plus', nikki: 'Nikki',
             daed: 'daed', homeproxy: 'HomeProxy', mihomo: 'MihomoTProxy'
         };
@@ -231,7 +237,7 @@
         card.appendChild(create('div', { 'class': 'func-title', 'text': '🌐 代理设置' }));
 
         var enableRow = create('div', { 'class': 'toggle-item proxy-row' });
-        enableRow.appendChild(create('span', { 'class': 'toggle-label', 'text': '启用代理拨杆控制' }));
+        enableRow.appendChild(create('span', { 'class': 'toggle-label', 'text': '启用代理滑动开关控制' }));
         proxyEnable = create('input', { 'type': 'checkbox', 'checked': data.proxy_enabled === true });
         proxyEnable.addEventListener('change', function() {
             if (proxyEnable.checked) enableOnlyFeature('proxy');
@@ -243,7 +249,7 @@
         selectRow.appendChild(create('label', { 'text': '代理程序' }));
         proxyTarget = create('select', { 'class': 'proxy-select' });
         var choices = [
-            ['auto', '自动检测'], ['passwall', 'PassWall'], ['openclash', 'OpenClash'],
+            ['auto', '自动检测'], ['passwall', 'PassWall'], ['passwall2', 'PassWall2'], ['openclash', 'OpenClash'],
             ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'],
             ['homeproxy', 'HomeProxy'], ['mihomo', 'MihomoTProxy']
         ];
@@ -321,7 +327,7 @@
         var pane = create('div', { 'class': 'control-section', 'id': 'reset-pane' });
         var card = create('div', { 'class': 'proxy-card reset-card' });
         card.appendChild(create('div', { 'class': 'func-title', 'text': '按键设置' }));
-        card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 按键独立运行，不受拨杆控制开关影响。连续点击间隔为 1.2 秒；单击、双击和三击默认关闭。' }));
+        card.appendChild(create('div', { 'class': 'reset-note', 'text': 'RESET 重置键独立运行，不受滑动开关影响。连续点击间隔为 1.2 秒；单击、双击和三击默认关闭。' }));
         card.appendChild(buildResetActionRow('single', '单击', data));
         card.appendChild(buildResetActionRow('double', '双击', data));
         card.appendChild(buildResetActionRow('triple', '三击', data));
@@ -349,9 +355,7 @@
     }
 
     function syncControlsFromData(data) {
-        if (globalSwitch) {
-            globalSwitch.checked = data.global_enabled === true;
-        }
+        updateGlobalStatus(data.global_enabled === true);
         for (var prefix in controls) {
             if (controls.hasOwnProperty(prefix)) {
                 var group = controls[prefix];
@@ -368,9 +372,7 @@
     }
 
     function syncControlsFromPost(postData) {
-        if (globalSwitch) {
-            globalSwitch.checked = postData.global_enabled === '1';
-        }
+        updateGlobalStatus(postData.global_enabled === '1');
         for (var prefix in controls) {
             if (controls.hasOwnProperty(prefix)) {
                 var group = controls[prefix];
@@ -402,8 +404,8 @@
         app.innerHTML = '';
 
         var tabBar = create('div', { 'class': 'tabs page-tabs' });
-        var paddleTab = create('button', { 'type': 'button', 'class': 'tab-button active', 'text': '拨杆控制' });
-        var resetTab = create('button', { 'type': 'button', 'class': 'tab-button', 'text': 'RESET 按键' });
+        var paddleTab = create('button', { 'type': 'button', 'class': 'tab-button active', 'text': '滑动开关' });
+        var resetTab = create('button', { 'type': 'button', 'class': 'tab-button', 'text': 'RESET 重置键' });
         tabBar.appendChild(paddleTab); tabBar.appendChild(resetTab); app.appendChild(tabBar);
         var paddlePage = create('div', { 'class': 'tab-page active' });
         var resetPage = create('div', { 'class': 'tab-page' });
@@ -422,16 +424,12 @@
         var modeTxt = (data.current_mode === '1' || data.current_mode === 1) ? '右侧' : '左侧';
         currentMode = (data.current_mode === '1' || data.current_mode === 1) ? '1' : '0';
         var modeBar = create('div', { 'class': 'current-mode' });
-        statusText = create('span', { 'class': 'mode-position', 'text': '当前拨杆位置：' + modeTxt });
+        statusText = create('span', { 'class': 'mode-position', 'text': '当前滑动开关位置：' + modeTxt });
         var rowGlobal = create('div', { 'class': 'mode-global' });
-        var labelGlobal = create('span', { 'text': '启用拨杆控制' });
-        globalSwitch = create('input', { 'type': 'checkbox', 'checked': data.global_enabled === true });
-        var switchLabel = create('label', { 'class': 'toggle-switch' }, [
-            globalSwitch,
-            create('span', { 'class': 'toggle-slider' })
-        ]);
-        rowGlobal.appendChild(labelGlobal);
-        rowGlobal.appendChild(switchLabel);
+        rowGlobal.appendChild(create('span', { 'text': '滑动开关状态' }));
+        globalStatusText = create('span', { 'class': 'control-status', 'text': data.global_enabled === true ? '已启用' : '未启用' });
+        rowGlobal.appendChild(globalStatusText);
+        updateGlobalStatus(data.global_enabled === true);
         modeBar.appendChild(statusText);
         modeBar.appendChild(rowGlobal);
         paddlePage.appendChild(modeBar);
@@ -491,13 +489,13 @@
         }
         function updateActionSummary() {
             if (featureSelect.value === 'none') {
-                actionSummary.textContent = '未启用拨杆控制';
+                actionSummary.textContent = '滑动开关未启用';
                 return;
             }
             var labels = actionLabelsFor(featureSelect.value);
             var rightText = leftSelect.value === '1' ? labels[1][1] : labels[0][1];
-            actionSummary.textContent = '左拨：' + leftSelect.options[leftSelect.selectedIndex].text +
-                '；右拨：' + rightText + '。';
+            actionSummary.textContent = '滑到左侧：' + leftSelect.options[leftSelect.selectedIndex].text +
+                '；滑到右侧：' + rightText + '。';
         }
         function showSelectedFeature() {
             var feature = featureSelect.value;
@@ -547,7 +545,7 @@
             button.textContent = '正在保存…';
 
             var postData = { action: action };
-            postData['global_enabled'] = globalSwitch.checked ? '1' : '0';
+            postData['global_enabled'] = feature === 'none' ? '0' : '1';
             postData['proxy_enabled'] = proxyEnable.checked ? '1' : '0';
             postData['proxy_target'] = proxyTarget.value;
             ['single', 'double', 'triple'].forEach(function(gesture) {
@@ -621,7 +619,7 @@
     return view.extend({
         render: function() {
             if (!document.getElementById('toggle-page-style')) {
-                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=79' });
+                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=80' });
                 document.head.appendChild(link);
             }
             var root = create('div', {}, [

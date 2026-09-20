@@ -218,6 +218,14 @@
     justify-content: center;
 }
 .mode-global .toggle-switch { margin: 0; }
+.control-status {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .18);
+    font-size: 13px;
+}
+.control-status.is-enabled { background: rgba(46, 204, 113, .24); }
+.control-status.is-disabled { background: rgba(255, 255, 255, .14); opacity: .82; }
 .proxy-status {
     padding: 11px 14px;
     margin: 10px 0 14px;

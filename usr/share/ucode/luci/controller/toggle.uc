@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { cursor } from 'uci';
 
 const cur = cursor();
-const proxy_targets = { auto: true, passwall: true, openclash: true, ssrplus: true, nikki: true, daed: true, homeproxy: true, mihomo: true };
+const proxy_targets = { auto: true, passwall: true, passwall2: true, openclash: true, ssrplus: true, nikki: true, daed: true, homeproxy: true, mihomo: true };
 const reset_actions = { wifi: true, led: true, reboot: true };
 
 function cfg_get(key, fallback) {
@@ -108,6 +108,7 @@ function save(requested_action) {
     let new_led = http.formvalue('led_enabled') == '1' ? '1' : '0';
     let new_wifi = http.formvalue('wifi_enabled') == '1' ? '1' : '0';
     let new_proxy = http.formvalue('proxy_enabled') == '1' ? '1' : '0';
+    let new_global = (new_led == '1' || new_wifi == '1' || new_proxy == '1') ? '1' : '0';
     let new_target = valid_proxy(http.formvalue('proxy_target') ?? 'auto');
 
     if ((new_led == '1') + (new_wifi == '1') + (new_proxy == '1') > 1)
@@ -116,7 +117,7 @@ function save(requested_action) {
     if (old_wifi == '0' && new_wifi == '1') system('/usr/sbin/x1pro-toggle-wifi snapshot >/dev/null 2>&1');
 
     let bool_map = {
-        global_enabled: 'global_enabled', led_enabled: 'led_enabled', led_left_action: 'led_high_action', led_right_action: 'led_low_action',
+        led_enabled: 'led_enabled', led_left_action: 'led_high_action', led_right_action: 'led_low_action',
         wifi_enabled: 'wifi_enabled', wifi_left_action: 'wifi_high_action', wifi_right_action: 'wifi_low_action',
         proxy_enabled: 'proxy_enabled', proxy_left_action: 'proxy_high_action', proxy_right_action: 'proxy_low_action',
         reset_single_enabled: 'reset_single_enabled', reset_double_enabled: 'reset_double_enabled', reset_triple_enabled: 'reset_triple_enabled',
@@ -127,6 +128,7 @@ function save(requested_action) {
     for (let form_key, uci_key in bool_map)
         cur.set('x1pro-toggle', 'main', uci_key, http.formvalue(form_key) == '1' ? '1' : '0');
 
+    cur.set('x1pro-toggle', 'main', 'global_enabled', new_global);
     cur.set('x1pro-toggle', 'main', 'proxy_target', new_target);
     for (let gesture in [ 'single', 'double', 'triple' ])
         cur.set('x1pro-toggle', 'main', `reset_${gesture}_action`, valid_reset(http.formvalue(`reset_${gesture}_action`) ?? 'wifi'));
