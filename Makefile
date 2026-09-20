@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
 PKG_VERSION:=1.4.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
 
@@ -53,6 +53,7 @@ define Package/toggle-switch/install
 	$(INSTALL_DATA) ./usr/share/luci/menu.d/toggle-switch.json $(1)/usr/share/luci/menu.d/toggle-switch.json
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/toggle
 	$(INSTALL_DATA) ./www/luci-static/resources/view/toggle/index.js $(1)/www/luci-static/resources/view/toggle/index.js
+	$(INSTALL_DATA) ./www/luci-static/resources/view/toggle/index.js $(1)/www/luci-static/resources/view/toggle/index-v14.js
 	$(INSTALL_DATA) ./www/luci-static/resources/view/toggle/index.css $(1)/www/luci-static/resources/view/toggle/index.css
 endef
 

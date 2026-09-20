@@ -226,6 +226,7 @@
 }
 .control-status.is-enabled { background: rgba(46, 204, 113, .24); }
 .control-status.is-disabled { background: rgba(255, 255, 255, .14); opacity: .82; }
+.control-status.is-pending { background: rgba(245, 166, 35, .28); color: inherit; }
 .proxy-status {
     padding: 11px 14px;
     margin: 10px 0 14px;

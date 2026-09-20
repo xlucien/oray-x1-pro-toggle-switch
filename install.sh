@@ -23,9 +23,10 @@ chmod 0755 /usr/sbin/x1pro-toggle-apply /usr/sbin/x1pro-toggle-sync /usr/sbin/x1
 cp "$BASE/usr/share/ucode/luci/controller/toggle.uc" /usr/share/ucode/luci/controller/toggle.uc
 cp "$BASE/usr/share/luci/menu.d/toggle-switch.json" /usr/share/luci/menu.d/toggle-switch.json
 cp "$BASE/www/luci-static/resources/view/toggle/index.js" /www/luci-static/resources/view/toggle/index.js
+cp "$BASE/www/luci-static/resources/view/toggle/index.js" /www/luci-static/resources/view/toggle/index-v14.js
 cp "$BASE/www/luci-static/resources/view/toggle/index.css" /www/luci-static/resources/view/toggle/index.css
 chmod 0644 /usr/share/ucode/luci/controller/toggle.uc /usr/share/luci/menu.d/toggle-switch.json \
-	/www/luci-static/resources/view/toggle/index.js /www/luci-static/resources/view/toggle/index.css
+	/www/luci-static/resources/view/toggle/index.js /www/luci-static/resources/view/toggle/index-v14.js /www/luci-static/resources/view/toggle/index.css
 rm -f /usr/lib/lua/luci/controller/toggle.lua /usr/lib/lua/luci/view/toggle/index.htm
 
 if [ ! -e /etc/config/x1pro-toggle ]; then

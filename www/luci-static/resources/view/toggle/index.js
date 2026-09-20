@@ -105,6 +105,11 @@
 
     function updateGlobalStatus(enabled) {
         if (!globalStatusText) return;
+        if (enabled === 'pending') {
+            globalStatusText.textContent = '待保存';
+            globalStatusText.className = 'control-status is-pending';
+            return;
+        }
         globalStatusText.textContent = enabled ? '已启用' : '未启用';
         globalStatusText.className = 'control-status ' + (enabled ? 'is-enabled' : 'is-disabled');
     }
@@ -519,8 +524,13 @@
             var leftOn = leftSelect.value === '1';
             setStoredActions(featureSelect.value, leftOn);
             updateActionSummary();
+            updateGlobalStatus('pending');
         });
-        featureSelect.addEventListener('change', showSelectedFeature);
+        featureSelect.addEventListener('change', function() {
+            showSelectedFeature();
+            updateGlobalStatus('pending');
+        });
+        proxyTarget.addEventListener('change', function() { updateGlobalStatus('pending'); });
         showSelectedFeature();
         gridBox.appendChild(combined);
         gridBox.appendChild(proxyPane);
@@ -619,7 +629,7 @@
     return view.extend({
         render: function() {
             if (!document.getElementById('toggle-page-style')) {
-                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=80' });
+                var link = create('link', { id: 'toggle-page-style', rel: 'stylesheet', type: 'text/css', href: L.resource('view/toggle/index.css') + '?v=81' });
                 document.head.appendChild(link);
             }
             var root = create('div', {}, [
