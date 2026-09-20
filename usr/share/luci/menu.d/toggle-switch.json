@@ -4,7 +4,7 @@
         "order": 60,
         "action": {
             "type": "view",
-            "path": "toggle/index-v14"
+            "path": "toggle/index-v1405"
         }
     },
     "admin/system/toggle/api": {
