@@ -9,7 +9,7 @@ CHOICE="${2:-$(uci -q get x1pro-toggle.main.proxy_target 2>/dev/null)}"
 
 valid_target() {
 	case "$1" in
-		auto|passwall|passwall2|openclash|ssrplus|nikki|daed|homeproxy|mihomo) return 0 ;;
+		auto|passwall|passwall2|openclash|ssrplus|nikki|daed|honk|homeproxy|mihomo) return 0 ;;
 		*) return 1 ;;
 	esac
 }
@@ -22,6 +22,7 @@ service_for() {
 		ssrplus) echo shadowsocksr ;;
 		nikki) echo nikki ;;
 		daed) echo daed ;;
+		honk) echo honk ;;
 		homeproxy) echo homeproxy ;;
 		mihomo) [ -x /etc/init.d/mihomo ] && echo mihomo || echo mihomo-tproxy ;;
 	esac
@@ -50,6 +51,7 @@ configured() {
 			;;
 		nikki) value="$(uci -q get nikki.config.enabled)" ;;
 		daed) value="$(uci -q get daed.config.enabled)" ;;
+		honk) value="$(uci -q get honk.main.enabled)" ;;
 		homeproxy) value="$(uci -q get homeproxy.config.enabled)" ;;
 		mihomo)
 			value="$(uci -q get mihomo.config.enabled)"
@@ -71,6 +73,7 @@ running() {
 		ssrplus) pgrep -f 'ssr-redir|ss-redir|ssrplus|/tmp/etc/ssr' >/dev/null 2>&1 ;;
 		nikki) pgrep -f '/etc/nikki/|mihomo.*nikki' >/dev/null 2>&1 ;;
 		daed) pidof daed >/dev/null 2>&1 || pidof dae >/dev/null 2>&1 ;;
+		honk) pidof honk-core >/dev/null 2>&1 ;;
 		homeproxy) pgrep -f '/etc/homeproxy/|sing-box.*homeproxy' >/dev/null 2>&1 ;;
 		mihomo) pgrep -f 'mihomo.*tproxy|mihomo-tproxy' >/dev/null 2>&1 ;;
 	esac
@@ -78,7 +81,7 @@ running() {
 
 detect_one() {
 	local mode="$1" item found='' count=0
-	for item in passwall passwall2 openclash ssrplus nikki daed homeproxy mihomo; do
+	for item in passwall passwall2 openclash ssrplus nikki daed honk homeproxy mihomo; do
 		installed "$item" || continue
 		case "$mode" in
 			running) running "$item" || continue ;;
@@ -129,6 +132,10 @@ set_configured() {
 		daed)
 			uci -q get daed.config.enabled >/dev/null && uci -q set "daed.config.enabled=$value"
 			package=daed
+			;;
+		honk)
+			uci -q get honk.main.enabled >/dev/null && uci -q set "honk.main.enabled=$value"
+			package=honk
 			;;
 		homeproxy) uci -q set "homeproxy.config.enabled=$value"; package=homeproxy ;;
 		mihomo)

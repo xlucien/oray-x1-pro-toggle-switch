@@ -218,7 +218,7 @@
         var labels = {
             none: '无', conflict: '检测到多个代理', passwall: 'PassWall', passwall2: 'PassWall2',
             openclash: 'OpenClash', ssrplus: 'SSR Plus', nikki: 'Nikki',
-            daed: 'daed', homeproxy: 'HomeProxy', mihomo: 'MihomoTProxy'
+            daed: 'daed', honk: 'Honk', homeproxy: 'HomeProxy', mihomo: 'MihomoTProxy'
         };
         return labels[target] || target;
     }
@@ -255,7 +255,7 @@
         proxyTarget = create('select', { 'class': 'proxy-select' });
         var choices = [
             ['auto', '自动检测'], ['passwall', 'PassWall'], ['passwall2', 'PassWall2'], ['openclash', 'OpenClash'],
-            ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'],
+            ['ssrplus', 'SSR Plus'], ['nikki', 'Nikki'], ['daed', 'daed'], ['honk', 'Honk'],
             ['homeproxy', 'HomeProxy'], ['mihomo', 'MihomoTProxy']
         ];
         choices.forEach(function(item) {

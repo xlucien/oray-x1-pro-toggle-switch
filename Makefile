@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=toggle-switch
 PKG_VERSION:=1.4.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Louis
 
